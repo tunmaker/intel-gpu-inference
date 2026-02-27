@@ -7,7 +7,6 @@
 #   ./scripts/run.sh /path/to/model.gguf      # Run with specific model
 #   ./scripts/run.sh --ctx 4096               # Override context size
 #   LLAMA_PORT=9090 ./scripts/run.sh          # Run on different port
-#   LLAMA_HOST=0.0.0.0 ./scripts/run.sh       # Serve on all interfaces (LAN access)
 #
 
 set -euo pipefail
@@ -51,7 +50,7 @@ while [[ $# -gt 0 ]]; do
             echo "  Any other args      Passed directly to llama-server"
             echo ""
             echo "Environment variables:"
-            echo "  LLAMA_HOST          Bind address (default: 127.0.0.1)"
+            echo "  LLAMA_HOST          Bind address (default: 0.0.0.0)"
             echo "  LLAMA_PORT          Listen port (default: 8080)"
             echo ""
             echo "Examples:"
@@ -59,7 +58,7 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 ~/models/llama-3.1-8b-q8_0.gguf             # Specific model"
             echo "  $0 --ctx 4096                                   # Smaller context"
             echo "  LLAMA_PORT=9090 $0                              # Different port
-  LLAMA_HOST=0.0.0.0 $0                          # Serve on all interfaces (LAN access)"
+  LLAMA_HOST=127.0.0.1 $0                        # Restrict to localhost only"
             exit 0
             ;;
         *.gguf)

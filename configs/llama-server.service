@@ -1,0 +1,18 @@
+[Unit]
+Description=llama.cpp server (Intel Arc A770)
+After=network.target
+
+[Service]
+Type=simple
+User=tunmaker
+WorkingDirectory=/home/tunmaker/intel-gpu-inference
+ExecStart=/home/tunmaker/intel-gpu-inference/scripts/run.sh
+Restart=on-failure
+RestartSec=5
+
+# Logs: journalctl -u llama-server -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

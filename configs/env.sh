@@ -27,5 +27,5 @@ export MODELS_DIR="/home/tunmaker/intel-gpu-inference/models"
 export DEFAULT_MODEL="/home/tunmaker/intel-gpu-inference/models/Qwen2.5-7B-Instruct-Q8_0.gguf"
 
 # === Server Defaults ===
-export LLAMA_HOST="${LLAMA_HOST:-127.0.0.1}"
+export LLAMA_HOST="0.0.0.0"
 export LLAMA_PORT="8080"
