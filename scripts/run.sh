@@ -58,7 +58,8 @@ while [[ $# -gt 0 ]]; do
             echo "  $0                                              # Default model"
             echo "  $0 ~/models/llama-3.1-8b-q8_0.gguf             # Specific model"
             echo "  $0 --ctx 4096                                   # Smaller context"
-            echo "  LLAMA_PORT=9090 $0                              # Different port"
+            echo "  LLAMA_PORT=9090 $0                              # Different port
+  LLAMA_HOST=0.0.0.0 $0                          # Serve on all interfaces (LAN access)"
             exit 0
             ;;
         *.gguf)
