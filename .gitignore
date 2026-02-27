@@ -1,0 +1,14 @@
+# Model weights (too large for git)
+models/
+
+# Build artifacts
+llama.cpp/build/
+*.o
+*.a
+*.so
+
+# Environment / secrets
+.env
+
+# OS
+.DS_Store
