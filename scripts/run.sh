@@ -7,6 +7,7 @@
 #   ./scripts/run.sh /path/to/model.gguf      # Run with specific model
 #   ./scripts/run.sh --ctx 4096               # Override context size
 #   LLAMA_PORT=9090 ./scripts/run.sh          # Run on different port
+#   LLAMA_HOST=0.0.0.0 ./scripts/run.sh       # Serve on all interfaces (LAN access)
 #
 
 set -euo pipefail

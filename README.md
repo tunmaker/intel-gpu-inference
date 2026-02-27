@@ -41,6 +41,12 @@ cd ~/intel-gpu-inference
 
 The API will be available at `http://127.0.0.1:8080/v1`.
 
+To serve on all interfaces (e.g. for LAN access), set `LLAMA_HOST` before running:
+
+```bash
+LLAMA_HOST=0.0.0.0 ./scripts/run.sh
+```
+
 ## Directory Structure
 
 ```
@@ -341,7 +347,7 @@ dmesg | tail -20
 | `UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS` | Allow >4GB VRAM allocations | `1` (set in env.sh) |
 | `ZE_FLAT_DEVICE_HIERARCHY` | Device hierarchy mode | `FLAT` |
 | `ONEAPI_DEVICE_SELECTOR` | Select specific GPU | Auto (set if iGPU conflict) |
-| `LLAMA_HOST` | Server bind address | `127.0.0.1` |
+| `LLAMA_HOST` | Server bind address | `127.0.0.1` (use `0.0.0.0` to serve on all interfaces) |
 | `LLAMA_PORT` | Server port | `8080` |
 
 ## Links
