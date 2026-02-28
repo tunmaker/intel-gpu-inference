@@ -20,7 +20,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LLAMA_CPP_DIR="$PROJECT_DIR/llama.cpp"
-MODELS_DIR="$PROJECT_DIR/models"
+# MODELS_DIR can be overridden via environment variable; default is ./models relative to project root
+MODELS_DIR="${MODELS_DIR:-$PROJECT_DIR/models}"
 LLAMA_CPP_REPO="https://github.com/ggml-org/llama.cpp.git"
 
 # Default model to download (bartowski provides single-file GGUFs)
