@@ -24,7 +24,13 @@ export ZE_FLAT_DEVICE_HIERARCHY=FLAT
 # === Paths ===
 export LLAMA_SERVER_BIN="/home/tunmaker/intel-gpu-inference/llama.cpp/build/bin/llama-server"
 export MODELS_DIR="/home/tunmaker/data/data/models"
-export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen2.5-7B-Instruct-Q8_0.gguf"
+
+export DEFAULT_MODEL="/home/tunmaker/data/data/models/Gemma-3-4B-VL-it-Gemini-Pro-Heretic-Uncensored-Thinking_F16.gguf"
+#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Ministral-3-14B-Instruct-2512-Q8_0.gguf"
+#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen2.5-7B-Instruct-Q8_0.gguf"
+#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen3-14b.Q8_0.gguf"
+#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen3.5-35B-A3B-UD-IQ2_XXS.gguf"
+#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen3VL-8B-Instruct-Q8_0.gguf"
 
 # === Server Defaults ===
 export LLAMA_HOST="0.0.0.0"

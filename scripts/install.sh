@@ -420,7 +420,20 @@ download_model() {
 create_env_config() {
     log_info "=== Step 5: Creating environment configuration ==="
 
+    mkdir -p "$PROJECT_DIR/configs"
     local env_file="$PROJECT_DIR/configs/env.sh"
+
+    # If an existing config is found, back it up and preserve it.
+    # This protects personal customisations (custom MODELS_DIR, LLAMA_HOST, etc.)
+    # on reinstalls.  Delete or rename the backup to regenerate from scratch.
+    if [[ -f "$env_file" ]]; then
+        local backup_file="${env_file}.bak.$(date +%Y%m%d_%H%M%S)"
+        cp "$env_file" "$backup_file"
+        log_ok "Existing config preserved: $env_file"
+        log_info "Backup created: $backup_file"
+        log_info "To regenerate config, delete $env_file and re-run install.sh"
+        return
+    fi
 
     # Find the llama-server binary
     local server_bin=""
@@ -460,7 +473,7 @@ export MODELS_DIR="$MODELS_DIR"
 export DEFAULT_MODEL="$MODELS_DIR/$DEFAULT_MODEL_FILE"
 
 # === Server Defaults ===
-export LLAMA_HOST="127.0.0.1"
+export LLAMA_HOST="0.0.0.0"
 export LLAMA_PORT="8080"
 EOF
 
