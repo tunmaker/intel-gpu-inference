@@ -159,9 +159,17 @@ echo ""
 echo "============================================================"
 echo ""
 
+# Build --mmproj arg only if MMPROJ_PATH is set and the file exists
+MMPROJ_ARGS=()
+if [[ -n "${MMPROJ_PATH:-}" && -f "${MMPROJ_PATH}" ]]; then
+    MMPROJ_ARGS=(--mmproj "$MMPROJ_PATH")
+elif [[ -n "${MMPROJ_PATH:-}" ]]; then
+    echo "[WARN] MMPROJ_PATH is set but file not found: $MMPROJ_PATH (running without --mmproj)"
+fi
+
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
-    --mmproj /home/tunmaker/models/mmproj-Qwen3VL-8B-Instruct-F16.gguf \
+    "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
     --host "$HOST" \
     --port "$PORT" \
     --ctx-size "$CONTEXT_SIZE" \

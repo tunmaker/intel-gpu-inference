@@ -22,17 +22,26 @@ export ZE_FLAT_DEVICE_HIERARCHY=FLAT
 # export ONEAPI_DEVICE_SELECTOR="level_zero:1"
 
 # === Paths ===
-export LLAMA_SERVER_BIN="/home/tunmaker/intel-gpu-inference/llama.cpp/build/bin/llama-server"
-export MODELS_DIR="/home/tunmaker/data/data/models"
-export DEFAULT_CTX="32768"
+# INFERENCE_ROOT: absolute path to the intel-gpu-inference directory,
+# computed relative to this file so it works on any machine.
+INFERENCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export LLAMA_SERVER_BIN="${LLAMA_SERVER_BIN:-$INFERENCE_ROOT/llama.cpp/build/bin/llama-server}"
 
-#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Gemma-3-4B-VL-it-Gemini-Pro-Heretic-Uncensored-Thinking_F16.gguf"
-#-export DEFAULT_MODEL="/home/tunmaker/models/Ministral-3-14B-Instruct-2512-Q8_0.gguf"
-#export DEFAULT_MODEL="/home/tunmaker/data/data/models/Qwen2.5-7B-Instruct-Q8_0.gguf"
-#-export DEFAULT_MODEL="/home/tunmaker/models/Qwen3-14b.Q8_0.gguf"
-#-export DEFAULT_MODEL="/home/tunmaker/models/Qwen3.5-35B-A3B-UD-IQ2_XXS.gguf"
-export DEFAULT_MODEL="/home/tunmaker/models/Qwen3VL-8B-Instruct-Q8_0.gguf"
+# Models directory — models live under $HOME/models by convention
+export MODELS_DIR="${MODELS_DIR:-$HOME/models}"
+export DEFAULT_CTX="${DEFAULT_CTX:-32768}"
+
+# Active model — comment/uncomment to switch
+#export DEFAULT_MODEL="$HOME/models/Gemma-3-4B-VL-it-Gemini-Pro-Heretic-Uncensored-Thinking_F16.gguf"
+#export DEFAULT_MODEL="$HOME/models/Ministral-3-14B-Instruct-2512-Q8_0.gguf"
+#export DEFAULT_MODEL="$HOME/models/Qwen2.5-7B-Instruct-Q8_0.gguf"
+#export DEFAULT_MODEL="$HOME/models/Qwen3-14b.Q8_0.gguf"
+#export DEFAULT_MODEL="$HOME/models/Qwen3.5-35B-A3B-UD-IQ2_XXS.gguf"
+export DEFAULT_MODEL="${DEFAULT_MODEL:-$HOME/models/Qwen3VL-8B-Instruct-Q8_0.gguf}"
+
+# Vision projector (for multimodal inference). Leave blank or unset to skip --mmproj.
+export MMPROJ_PATH="${MMPROJ_PATH:-$HOME/models/mmproj-Qwen3VL-8B-Instruct-F16.gguf}"
 
 # === Server Defaults ===
-export LLAMA_HOST="0.0.0.0"
-export LLAMA_PORT="8080"
+export LLAMA_HOST="${LLAMA_HOST:-0.0.0.0}"
+export LLAMA_PORT="${LLAMA_PORT:-8080}"
