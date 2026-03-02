@@ -1,0 +1,64 @@
+#!/bin/bash
+# Pre-commit hook: block commits containing secrets or private information.
+# Activated by install.sh via: git config core.hooksPath .githooks
+set -euo pipefail
+
+FAILED=0
+
+# Scan only added lines in the staged diff
+DIFF=$(git diff --cached -U0 | grep -E "^\+" | grep -v "^+++" || true)
+
+if [ -z "$DIFF" ]; then
+  exit 0
+fi
+
+check() {
+  local label="$1"
+  local pattern="$2"
+  local hits
+  hits=$(echo "$DIFF" | grep -Ei "$pattern" || true)
+  if [ -n "$hits" ]; then
+    echo "  [BLOCKED] $label"
+    echo "$hits" | head -5 | sed 's/^/    /'
+    FAILED=1
+  fi
+}
+
+echo "=== pre-commit: scanning for secrets ==="
+
+# Private keys / certificates (pattern passed via -e to avoid leading-dash confusion)
+if echo "$DIFF" | grep -Ei -e "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY" > /dev/null 2>&1; then
+  echo "  [BLOCKED] Private key header"
+  FAILED=1
+fi
+
+# Generic token assignments
+check "API key / token assignment" \
+  "(api_key|api_secret|auth_token|access_token|secret_key|client_secret)\s*[=:]\s*['\"][^'\"]{8,}"
+
+# Known key prefixes
+check "Anthropic API key" "sk-ant-[a-zA-Z0-9]+"
+check "OpenAI API key"    "sk-[a-zA-Z0-9]{20,}"
+check "GitHub token"      "ghp_[a-zA-Z0-9]{36}|ghs_[a-zA-Z0-9]{36}"
+check "AWS access key"    "AKIA[0-9A-Z]{16}"
+
+# Hardcoded absolute home paths — must be followed by / (actual usage, not docs placeholder)
+check "Hardcoded /home/<user>/ path" "/home/[a-zA-Z][a-zA-Z0-9_-]+/"
+
+# Passwords in plain assignments
+check "Password in plain text" \
+  "(password|passwd|pwd)\s*[=:]\s*['\"][^'\"]{4,}"
+
+# Phone numbers (E.164)
+check "Phone number" "\+[1-9][0-9]{7,14}[^0-9]"
+
+echo "==="
+
+if [ "$FAILED" -eq 1 ]; then
+  echo "Commit blocked. Fix the issues above before committing."
+  echo "To bypass: git commit --no-verify  (use with caution)"
+  exit 1
+fi
+
+echo "OK — no secrets detected."
+exit 0
