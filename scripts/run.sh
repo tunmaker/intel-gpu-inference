@@ -32,7 +32,7 @@ fi
 # ============================================================================
 
 MODEL_PATH="${DEFAULT_MODEL:-}"
-CONTEXT_SIZE=""
+CONTEXT_SIZE="${DEFAULT_CTX:-}"
 EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -133,8 +133,8 @@ if [[ -z "$CONTEXT_SIZE" ]]; then
     echo "[INFO] Model size: ${MODEL_SIZE_GB}GB, auto-selected context: ${CONTEXT_SIZE} tokens"
 fi
 
-# GPU layers: offload everything to GPU (-1 = all layers)
-GPU_LAYERS="-1"
+# GPU layers: offload everything to GPU (999 = all layers)
+GPU_LAYERS="999"
 
 # ============================================================================
 # Launch server
@@ -150,7 +150,8 @@ echo "  Context:  $CONTEXT_SIZE tokens"
 echo "  GPU:      All layers offloaded"
 echo "  Endpoint: http://${HOST}:${PORT}/v1"
 echo ""
-echo "  Tool calling enabled (auto-detect model format)"
+echo "  Tool calling enabled (--chat-template qwen2vl)"
+echo "  Vision enabled (Qwen3VL image/video tokens)"
 echo "  Streaming enabled"
 echo ""
 echo "  Press Ctrl+C to stop the server"
@@ -160,10 +161,12 @@ echo ""
 
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
+    --mmproj /home/tunmaker/models/mmproj-Qwen3VL-8B-Instruct-F16.gguf \
     --host "$HOST" \
     --port "$PORT" \
     --ctx-size "$CONTEXT_SIZE" \
     --n-gpu-layers $GPU_LAYERS \
+    --cache-type-k q8_0 \
+    --cache-type-v q8_0 \
     --flash-attn on \
-    --jinja \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
