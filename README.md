@@ -67,7 +67,7 @@ sudo systemctl stop llama-server       # stop
 journalctl -u llama-server -f          # follow logs
 ```
 
-To change the model or settings, edit `configs/env.sh` and restart the service.
+To change the model or settings, edit `~/.config/intel-gpu-inference/env` and restart the service.
 
 ## Directory Structure
 
@@ -275,7 +275,7 @@ lsmod | grep -E "i915|xe"
 # This is the #1 issue. Set the relaxed allocation limit:
 export UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=1
 
-# This is already set in configs/env.sh, but verify:
+# This is already set in ~/.config/intel-gpu-inference/env, but verify:
 echo $UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS
 # Should print: 1
 
@@ -375,8 +375,14 @@ dmesg | tail -20
 
 ## Links
 
-- [llama.cpp SYCL Backend Docs](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/SYCL.md)
+### llama.cpp SYCL
+- [llama.cpp SYCL Backend Docs (Linux)](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/SYCL.md#linux)
 - [llama.cpp Server API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
 - [llama.cpp Function Calling](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)
-- [Intel oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
-- [Intel GPU Compute Drivers](https://dgpu-docs.intel.com/driver/installation.html)
+
+### Intel GPU Drivers
+- [Intel Client GPU Drivers (Ubuntu 22.04)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-22-04)
+- [Intel Client GPU Drivers (Ubuntu 24.04+)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-latest)
+
+### Intel oneAPI
+- [Intel oneAPI Base Toolkit Download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)

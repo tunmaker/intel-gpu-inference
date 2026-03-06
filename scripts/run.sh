@@ -15,15 +15,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # ============================================================================
-# Load environment
+# Load environment (XDG-compliant config)
 # ============================================================================
 
-if [[ -f "$PROJECT_DIR/configs/env.sh" ]]; then
+ENV_FILE="$HOME/.config/intel-gpu-inference/env"
+if [[ -f "$ENV_FILE" ]]; then
     set +u
-    source "$PROJECT_DIR/configs/env.sh"
+    source "$ENV_FILE"
     set -u
 else
-    echo "[ERROR] configs/env.sh not found. Run install.sh first."
+    echo "[ERROR] Config not found: $ENV_FILE"
+    echo "Run install.sh first to create the config."
     exit 1
 fi
 
@@ -45,13 +47,14 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [model_path] [--ctx SIZE] [extra llama-server args...]"
             echo ""
             echo "Options:"
-            echo "  model_path          Path to GGUF model file (default: from configs/env.sh)"
+            echo "  model_path          Path to GGUF model file (default: from ~/.config/intel-gpu-inference/env)"
             echo "  --ctx SIZE          Override context window size"
             echo "  Any other args      Passed directly to llama-server"
             echo ""
             echo "Environment variables:"
             echo "  LLAMA_HOST          Bind address (default: 0.0.0.0)"
             echo "  LLAMA_PORT          Listen port (default: 8080)"
+            echo "  Config:             ~/.config/intel-gpu-inference/env"
             echo ""
             echo "Examples:"
             echo "  $0                                              # Default model"

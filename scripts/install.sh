@@ -20,8 +20,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LLAMA_CPP_DIR="$PROJECT_DIR/llama.cpp"
-# MODELS_DIR can be overridden via environment variable; default is ./models relative to project root
-MODELS_DIR="${MODELS_DIR:-$PROJECT_DIR/models}"
+# MODELS_DIR can be overridden via environment variable; default is ~/models
+MODELS_DIR="${MODELS_DIR:-$HOME/models}"
 LLAMA_CPP_REPO="https://github.com/ggml-org/llama.cpp.git"
 
 # Default model to download (bartowski provides single-file GGUFs)
@@ -124,25 +124,24 @@ install_intel_gpu_drivers() {
         log_ok "User is already in render and video groups"
     fi
 
-    # Package names changed in Ubuntu 24.04 Noble:
-    #   level-zero          -> libze1
-    #   intel-level-zero-gpu -> libze-intel-gpu1
-    #   level-zero-dev      -> libze-dev
+    # Package names for Ubuntu 24.04+ (Noble) - use intel-graphics PPA
+    # Package names for Ubuntu 22.04 (Jammy) - use Intel's repository
     local level_zero_runtime level_zero_gpu level_zero_dev
-    if [[ "$DISTRO" == "ubuntu" && "$DISTRO_VERSION" == "24.04" ]] || \
-       [[ "$DISTRO" == "ubuntu" && "${DISTRO_VERSION%%.*}" -ge 24 ]] 2>/dev/null; then
+    if [[ "$DISTRO" == "ubuntu" && "${DISTRO_VERSION%%.*}" -ge 24 ]]; then
+        # Ubuntu 24.04+: packages from intel-graphics PPA
         level_zero_runtime="libze1"
         level_zero_gpu="libze-intel-gpu1"
         level_zero_dev="libze-dev"
     else
-        level_zero_runtime="level-zero"
-        level_zero_gpu="intel-level-zero-gpu"
-        level_zero_dev="level-zero-dev"
+        # Ubuntu 22.04: packages from Intel's repository
+        level_zero_runtime="libze1"
+        level_zero_gpu="libze-intel-gpu1"
+        level_zero_dev="libze-dev"
     fi
 
     # Check if ALL required Intel compute runtime packages are installed
     local missing_pkgs=()
-    for pkg in intel-opencl-icd "$level_zero_gpu" "$level_zero_runtime" "$level_zero_dev"; do
+    for pkg in intel-opencl-icd "$level_zero_gpu" "$level_zero_runtime" "$level_zero_dev" clinfo; do
         if ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
             missing_pkgs+=("$pkg")
         fi
@@ -168,8 +167,9 @@ install_intel_gpu_drivers() {
             log_info "Installing Intel GPU compute runtime..."
 
             # Add Intel graphics repository if not present
-            if [[ ! -f /etc/apt/sources.list.d/intel-gpu-jammy.list ]] && \
-               [[ ! -f /etc/apt/sources.list.d/intel-graphics.list ]]; then
+            if [[ ! -f /etc/apt/sources.list.d/intel-gpu-prerequisites.list ]] && \
+               [[ ! -f /etc/apt/sources.list.d/intel-graphics.list ]] && \
+               [[ ! -f /etc/apt/sources.list.d/intel-gpu-jammy.list ]]; then
 
                 sudo apt-get update -qq
                 sudo apt-get install -y -qq gpg-agent wget
@@ -181,7 +181,7 @@ install_intel_gpu_drivers() {
                 if [[ "$DISTRO" == "ubuntu" ]]; then
                     case "$DISTRO_VERSION" in
                         22.04) codename="jammy" ;;
-                        24.04) codename="noble" ;;
+                        24.04|"24.10"|"25.04"|"25.10") codename="noble" ;;
                         *)     codename="jammy"; log_warn "Untested Ubuntu version, using jammy repo" ;;
                     esac
                 else
@@ -189,8 +189,8 @@ install_intel_gpu_drivers() {
                     log_warn "Using Ubuntu jammy repository for Debian"
                 fi
 
-                echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu ${codename}/lts/2350 unified" | \
-                    sudo tee /etc/apt/sources.list.d/intel-graphics.list > /dev/null
+                echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu ${codename} unified" | \
+                    sudo tee /etc/apt/sources.list.d/intel-gpu-prerequisites.list > /dev/null
 
                 sudo apt-get update -qq
             fi
@@ -414,24 +414,18 @@ download_model() {
 }
 
 # ============================================================================
-# Step 5: Create environment config
+# Step 5: Create environment config (XDG-compliant)
 # ============================================================================
 
 create_env_config() {
     log_info "=== Step 5: Creating environment configuration ==="
 
-    mkdir -p "$PROJECT_DIR/configs"
-    local env_file="$PROJECT_DIR/configs/env.sh"
+    mkdir -p "$HOME/.config/intel-gpu-inference"
+    local env_file="$HOME/.config/intel-gpu-inference/env"
 
-    # If an existing config is found, back it up and preserve it.
-    # This protects personal customisations (custom MODELS_DIR, LLAMA_HOST, etc.)
-    # on reinstalls.  Delete or rename the backup to regenerate from scratch.
     if [[ -f "$env_file" ]]; then
-        local backup_file="${env_file}.bak.$(date +%Y%m%d_%H%M%S)"
-        cp "$env_file" "$backup_file"
-        log_ok "Existing config preserved: $env_file"
-        log_info "Backup created: $backup_file"
-        log_info "To regenerate config, delete $env_file and re-run install.sh"
+        log_ok "Config already exists: $env_file"
+        log_info "To regenerate, delete it and re-run install.sh"
         return
     fi
 
@@ -445,7 +439,7 @@ create_env_config() {
 
     cat > "$env_file" << EOF
 # Intel Arc GPU Environment Configuration
-# Source this file before running llama-server:  source configs/env.sh
+# Source this file before running llama-server:  source ~/.config/intel-gpu-inference/env
 
 # === oneAPI Environment ===
 if [[ -f /opt/intel/oneapi/setvars.sh ]]; then
