@@ -493,7 +493,7 @@ main() {
     echo ""
     build_llama_cpp
     echo ""
-    download_model
+    #download_model
     echo ""
     create_env_config
 

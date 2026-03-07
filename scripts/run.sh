@@ -17,6 +17,11 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 # ============================================================================
 # Load environment (XDG-compliant config)
 # ============================================================================
+if [ -z "${ONEAPI_SETVARS_DONE:-}" ]; then
+    source /opt/intel/oneapi/setvars.sh 2>/dev/null || true
+else
+    echo "oneAPI environment already loaded"
+fi
 
 ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 if [[ -f "$ENV_FILE" ]]; then
@@ -52,9 +57,12 @@ while [[ $# -gt 0 ]]; do
             echo "  Any other args      Passed directly to llama-server"
             echo ""
             echo "Environment variables:"
-            echo "  LLAMA_HOST          Bind address (default: 0.0.0.0)"
-            echo "  LLAMA_PORT          Listen port (default: 8080)"
-            echo "  Config:             ~/.config/intel-gpu-inference/env"
+            echo "  LLAMA_HOST                            Bind address (default: 127.0.0.1)"
+            echo "  LLAMA_PORT                            Listen port (default: 8080)"
+            echo "  ZES_ENABLE_SYSMAN                       GPU VRAM detection (default: 1)"
+            echo "  UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS  Allow >4GB VRAM allocs (default: 1)"
+            echo "  ONEAPI_DEVICE_SELECTOR                  Device selector, e.g. level_zero:0"
+            echo "  Config:                               ~/.config/intel-gpu-inference/env"
             echo ""
             echo "Examples:"
             echo "  $0                                              # Default model"
@@ -117,27 +125,22 @@ fi
 HOST="${LLAMA_HOST:-127.0.0.1}"
 PORT="${LLAMA_PORT:-8080}"
 
-# Auto-detect context size based on model file size (approximate VRAM usage)
 if [[ -z "$CONTEXT_SIZE" ]]; then
-    MODEL_SIZE_GB=$(awk "BEGIN {printf \"%.1f\", $(stat --format="%s" "$MODEL_PATH") / 1073741824}")
-
-    # 16GB VRAM budget: model + KV cache + ~1.5GB overhead
-    # KV cache size depends on model architecture, ~0.5-1MB per token for 7B models
-    if awk "BEGIN {exit !($MODEL_SIZE_GB <= 4.5)}"; then
-        CONTEXT_SIZE=16384   # Small Q4_0 model: lots of room
-    elif awk "BEGIN {exit !($MODEL_SIZE_GB <= 8.0)}"; then
-        CONTEXT_SIZE=8192    # Q8_0 7B model: comfortable
-    elif awk "BEGIN {exit !($MODEL_SIZE_GB <= 12.0)}"; then
-        CONTEXT_SIZE=4096    # 14B Q4_0: moderate context
-    else
-        CONTEXT_SIZE=2048    # Large model: minimal context
-    fi
-
-    echo "[INFO] Model size: ${MODEL_SIZE_GB}GB, auto-selected context: ${CONTEXT_SIZE} tokens"
+    CONTEXT_SIZE=8192
+    echo "[INFO] Using default context size: ${CONTEXT_SIZE} tokens (set DEFAULT_CTX in env or use --ctx to override)"
 fi
 
 # GPU layers: offload everything to GPU (999 = all layers)
 GPU_LAYERS="999"
+
+# ============================================================================
+# SYCL runtime environment (Intel Arc recommended)
+# ============================================================================
+
+# Enable GPU VRAM detection via sysman
+export ZES_ENABLE_SYSMAN="${ZES_ENABLE_SYSMAN:-1}"
+# Allow VRAM allocations larger than 4GB (required for most models)
+export UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS="${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS:-1}"
 
 # ============================================================================
 # Launch server
@@ -153,8 +156,11 @@ echo "  Context:  $CONTEXT_SIZE tokens"
 echo "  GPU:      All layers offloaded"
 echo "  Endpoint: http://${HOST}:${PORT}/v1"
 echo ""
-echo "  Tool calling enabled (--chat-template qwen2vl)"
-echo "  Vision enabled (Qwen3VL image/video tokens)"
+echo "  SYCL:     split-mode=none, main-gpu=0"
+echo "  Env:      ZES_ENABLE_SYSMAN=${ZES_ENABLE_SYSMAN}"
+echo "            UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS}"
+echo ""
+echo "  Flash attention, KV cache q8_0, mmap enabled"
 echo "  Streaming enabled"
 echo ""
 echo "  Press Ctrl+C to stop the server"
@@ -177,7 +183,10 @@ exec "$SERVER_BIN" \
     --port "$PORT" \
     --ctx-size "$CONTEXT_SIZE" \
     --n-gpu-layers $GPU_LAYERS \
+    --split-mode none \
+    --main-gpu 0 \
     --cache-type-k q8_0 \
     --cache-type-v q8_0 \
     --flash-attn on \
+    --mmap \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
