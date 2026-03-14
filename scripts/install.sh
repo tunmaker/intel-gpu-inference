@@ -439,12 +439,8 @@ create_env_config() {
 
     cat > "$env_file" << EOF
 # Intel Arc GPU Environment Configuration
-# Source this file before running llama-server:  source ~/.config/intel-gpu-inference/env
-
-# === oneAPI Environment ===
-if [[ -f /opt/intel/oneapi/setvars.sh ]]; then
-    source /opt/intel/oneapi/setvars.sh 2>/dev/null
-fi
+# Loaded by llama-server.service as EnvironmentFile= (KEY=value pairs only — no shell code).
+# To regenerate: delete this file and re-run install.sh
 
 # === Intel Arc GPU Settings ===
 
@@ -470,6 +466,27 @@ export DEFAULT_MODEL="$MODELS_DIR/$DEFAULT_MODEL_FILE"
 export LLAMA_HOST="0.0.0.0"
 export LLAMA_PORT="8080"
 EOF
+
+    # Snapshot oneAPI runtime vars as static KEY=value entries.
+    # systemd EnvironmentFile= cannot execute shell code, so we pre-expand
+    # PATH and LD_LIBRARY_PATH here at install time to avoid run.sh needing
+    # to source setvars.sh at startup (which blocks in non-TTY service contexts).
+    if [[ -f /opt/intel/oneapi/setvars.sh ]]; then
+        log_info "Snapshotting oneAPI runtime paths into env config..."
+        local oneapi_ld oneapi_path
+        oneapi_ld=$(bash -c 'source /opt/intel/oneapi/setvars.sh 2>/dev/null && printf "%s" "$LD_LIBRARY_PATH"')
+        oneapi_path=$(bash -c 'source /opt/intel/oneapi/setvars.sh 2>/dev/null && printf "%s" "$PATH"')
+        cat >> "$env_file" << ENVEOF
+
+# === oneAPI Runtime Paths (snapshotted at install time) ===
+# Pre-expanded so systemd can load them without sourcing shell scripts.
+# Regenerate: delete this file and re-run install.sh
+ONEAPI_SETVARS_DONE=1
+LD_LIBRARY_PATH=${oneapi_ld}
+PATH=${oneapi_path}
+ENVEOF
+        log_ok "oneAPI paths snapshotted into env config"
+    fi
 
     chmod +x "$env_file"
     log_ok "Environment config created: $env_file"

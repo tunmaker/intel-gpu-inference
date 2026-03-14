@@ -18,16 +18,19 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 # Load environment (XDG-compliant config)
 # ============================================================================
 if [ -z "${ONEAPI_SETVARS_DONE:-}" ]; then
+    # Only reached when run.sh is called directly from an interactive shell.
+    # When started via systemd, ONEAPI_SETVARS_DONE=1 is set in the EnvironmentFile
+    # (snapshotted by install.sh), so this block is skipped — avoiding a hang in
+    # non-TTY contexts where setvars.sh can block waiting for device enumeration.
     source /opt/intel/oneapi/setvars.sh 2>/dev/null || true
-else
-    echo "oneAPI environment already loaded"
 fi
 
 ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 if [[ -f "$ENV_FILE" ]]; then
-    set +u
-    source "$ENV_FILE"
-    set -u
+    set +eu
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"  # set -e disabled: env file may re-source setvars.sh which returns non-zero when already loaded
+    set -eu
 else
     echo "[ERROR] Config not found: $ENV_FILE"
     echo "Run install.sh first to create the config."
@@ -126,7 +129,7 @@ HOST="${LLAMA_HOST:-127.0.0.1}"
 PORT="${LLAMA_PORT:-8080}"
 
 if [[ -z "$CONTEXT_SIZE" ]]; then
-    CONTEXT_SIZE=8192
+    CONTEXT_SIZE=24576
     echo "[INFO] Using default context size: ${CONTEXT_SIZE} tokens (set DEFAULT_CTX in env or use --ctx to override)"
 fi
 
@@ -160,7 +163,7 @@ echo "  SYCL:     split-mode=none, main-gpu=0"
 echo "  Env:      ZES_ENABLE_SYSMAN=${ZES_ENABLE_SYSMAN}"
 echo "            UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS}"
 echo ""
-echo "  Flash attention, KV cache q8_0, mmap enabled"
+echo "  Flash attention off, KV cache f16, mmap enabled"
 echo "  Streaming enabled"
 echo ""
 echo "  Press Ctrl+C to stop the server"
@@ -176,6 +179,24 @@ elif [[ -n "${MMPROJ_PATH:-}" ]]; then
     echo "[WARN] MMPROJ_PATH is set but file not found: $MMPROJ_PATH (running without --mmproj)"
 fi
 
+# Old config: flash attention on, q8_0 KV cache, 82 graph splits, CLIP falls back to CPU
+# exec "$SERVER_BIN" \
+#     --model "$MODEL_PATH" \
+#     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     --host "$HOST" \
+#     --port "$PORT" \
+#     --ctx-size "$CONTEXT_SIZE" \
+#     --n-gpu-layers $GPU_LAYERS \
+#     --split-mode none \
+#     --main-gpu 0 \
+#     --cache-type-k q8_0 \
+#     --cache-type-v q8_0 \
+#     --flash-attn on \
+#     --mmap \
+#     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+# Optimized config: no flash attention, f16 KV cache, 2 graph splits, CLIP on GPU
+# Benchmarked: 2.2x faster prompt eval, 1.7x faster generation, 2.9x faster vision
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
@@ -185,8 +206,6 @@ exec "$SERVER_BIN" \
     --n-gpu-layers $GPU_LAYERS \
     --split-mode none \
     --main-gpu 0 \
-    --cache-type-k q8_0 \
-    --cache-type-v q8_0 \
-    --flash-attn on \
+    --fit off \
     --mmap \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
