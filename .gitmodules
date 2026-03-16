@@ -4,3 +4,6 @@
 [submodule "open-websearch"]
 	path = open-websearch
 	url = https://github.com/Aas-ee/open-webSearch.git
+[submodule "whisper.cpp"]
+	path = whisper.cpp
+	url = https://github.com/ggml-org/whisper.cpp.git

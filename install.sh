@@ -6,18 +6,21 @@
 #   ./install.sh                    # Install llama-server service
 #   ./install.sh --with-mcp         # Also install MCP web search server
 #   ./install.sh --update           # Pull latest submodules + rebuild all
-#   ./install.sh --update --with-mcp # Update everything
+#   ./install.sh --with-whisper      # Also install whisper speech recognition
+#   ./install.sh --update --with-mcp --with-whisper # Update everything
 
 set -euo pipefail
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse flags
 WITH_MCP=false
+WITH_WHISPER=false
 UPDATE=false
 for arg in "$@"; do
     case "$arg" in
-        --with-mcp) WITH_MCP=true ;;
-        --update)   UPDATE=true ;;
+        --with-mcp)     WITH_MCP=true ;;
+        --with-whisper) WITH_WHISPER=true ;;
+        --update)       UPDATE=true ;;
     esac
 done
 
@@ -71,5 +74,16 @@ if [[ "$WITH_MCP" == "true" ]]; then
         bash "$INSTALL_DIR/scripts/install-mcp.sh" --update
     else
         bash "$INSTALL_DIR/scripts/install-mcp.sh"
+    fi
+fi
+
+# 7. (Optional) whisper.cpp speech recognition server
+if [[ "$WITH_WHISPER" == "true" ]]; then
+    echo ""
+    echo "[intel-gpu-inference] Installing whisper.cpp speech recognition server..."
+    if [[ "$UPDATE" == "true" ]]; then
+        bash "$INSTALL_DIR/scripts/install-whisper.sh" --update
+    else
+        bash "$INSTALL_DIR/scripts/install-whisper.sh"
     fi
 fi
