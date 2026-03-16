@@ -129,7 +129,7 @@ HOST="${LLAMA_HOST:-127.0.0.1}"
 PORT="${LLAMA_PORT:-8080}"
 
 if [[ -z "$CONTEXT_SIZE" ]]; then
-    CONTEXT_SIZE=24576
+    CONTEXT_SIZE=131072
     echo "[INFO] Using default context size: ${CONTEXT_SIZE} tokens (set DEFAULT_CTX in env or use --ctx to override)"
 fi
 
@@ -163,7 +163,7 @@ echo "  SYCL:     split-mode=none, main-gpu=0"
 echo "  Env:      ZES_ENABLE_SYSMAN=${ZES_ENABLE_SYSMAN}"
 echo "            UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS}"
 echo ""
-echo "  Flash attention off, KV cache f16, mmap enabled"
+echo "  Flash attention auto, KV cache f16, mmap enabled"
 echo "  Streaming enabled"
 echo ""
 echo "  Press Ctrl+C to stop the server"
@@ -179,7 +179,10 @@ elif [[ -n "${MMPROJ_PATH:-}" ]]; then
     echo "[WARN] MMPROJ_PATH is set but file not found: $MMPROJ_PATH (running without --mmproj)"
 fi
 
-# Old config: flash attention on, q8_0 KV cache, 82 graph splits, CLIP falls back to CPU
+# --- Legacy configs (commented out) ---
+
+# Config A: Ministral 14B — flash attn on, q8_0 KV cache (pre-rebuild)
+# 82 graph splits, CLIP falls back to CPU, 32K context
 # exec "$SERVER_BIN" \
 #     --model "$MODEL_PATH" \
 #     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
@@ -195,8 +198,49 @@ fi
 #     --mmap \
 #     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
-# Optimized config: no flash attention, f16 KV cache, 2 graph splits, CLIP on GPU
+# Config B: Ministral 14B — no flash attn, f16 KV cache (post-rebuild, pre-Qwen3.5)
+# 2 graph splits, CLIP on GPU, 24K context
 # Benchmarked: 2.2x faster prompt eval, 1.7x faster generation, 2.9x faster vision
+# exec "$SERVER_BIN" \
+#     --model "$MODEL_PATH" \
+#     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     --host "$HOST" \
+#     --port "$PORT" \
+#     --ctx-size 24576 \
+#     --n-gpu-layers $GPU_LAYERS \
+#     --split-mode none \
+#     --main-gpu 0 \
+#     --fit off \
+#     --mmap \
+#     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+# Config C: Qwen3.5-9B Q8_0 — thinking mode, general chat (commented out)
+# Hybrid SSM+attention arch: only 8/32 layers use KV cache → 131K context fits in VRAM
+# Unsloth recommended: temp=1.0, top_p=0.95, top_k=20, repeat_penalty=1.5 (thinking mode)
+# exec "$SERVER_BIN" \
+#     --model "$MODEL_PATH" \
+#     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     --host "$HOST" \
+#     --port "$PORT" \
+#     --ctx-size "$CONTEXT_SIZE" \
+#     --n-gpu-layers $GPU_LAYERS \
+#     --split-mode none \
+#     --main-gpu 0 \
+#     --fit off \
+#     --mmap \
+#     --temp 1.0 \
+#     --top-p 0.95 \
+#     --top-k 20 \
+#     --min-p 0.0 \
+#     --repeat-penalty 1.5 \
+#     --chat-template-kwargs '{"enable_thinking":true}' \
+#     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+# --- Active config: Qwen3.5-9B Q8_0 — agentic workflow (tool calling, coding, MCP) ---
+# SYCL flash attention + fused Gated Delta Net enabled (requires llama.cpp build >= 8369)
+# 2 graph splits, 12.55 tok/s generation, vision via mmproj-F16
+# Unsloth recommended agentic profile: temp=0.6, no repeat penalty (preserves JSON formatting)
+# Thinking disabled: faster responses, no <think> block overhead for tool call loops
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
@@ -208,4 +252,9 @@ exec "$SERVER_BIN" \
     --main-gpu 0 \
     --fit off \
     --mmap \
+    --temp 0.6 \
+    --top-p 0.95 \
+    --top-k 20 \
+    --min-p 0.0 \
+    --chat-template-kwargs '{"enable_thinking":false}' \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
