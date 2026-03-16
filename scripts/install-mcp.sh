@@ -3,7 +3,7 @@
 # install-mcp.sh - Install the open-websearch MCP server for web search tools
 #
 # This script:
-#   1. Ensures Node.js 18+ is installed
+#   1. Ensures Node.js 20+ is installed
 #   2. Clones and builds open-websearch
 #   3. Appends MCP config to the env file
 #   4. Installs and starts a systemd user service
@@ -23,7 +23,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 WEBSEARCH_DIR="$PROJECT_DIR/open-websearch"
 ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 
-MIN_NODE_MAJOR=18
+MIN_NODE_MAJOR=20
 
 # Colors for output
 RED='\033[0;31m'
@@ -140,7 +140,7 @@ build_websearch() {
     cd "$WEBSEARCH_DIR"
 
     # Skip rebuild if dist/ already exists
-    if [[ -f "$WEBSEARCH_DIR/dist/index.js" ]]; then
+    if [[ -f "$WEBSEARCH_DIR/build/index.js" ]]; then
         log_ok "open-websearch already built (delete open-websearch/dist/ to force rebuild)"
         return
     fi
@@ -151,10 +151,10 @@ build_websearch() {
     log_info "Building..."
     npm run build
 
-    if [[ -f "$WEBSEARCH_DIR/dist/index.js" ]]; then
+    if [[ -f "$WEBSEARCH_DIR/build/index.js" ]]; then
         log_ok "open-websearch built successfully"
     else
-        log_error "Build failed. dist/index.js not found."
+        log_error "Build failed. build/index.js not found."
         exit 1
     fi
 }

@@ -41,7 +41,7 @@ export ENABLE_CORS="${ENABLE_CORS:-true}"
 # Validate
 # ============================================================================
 
-if [[ ! -f "$WEBSEARCH_DIR/dist/index.js" ]]; then
+if [[ ! -f "$WEBSEARCH_DIR/build/index.js" ]]; then
     echo "[ERROR] open-websearch not built. Run scripts/install-mcp.sh first."
     exit 1
 fi
@@ -71,4 +71,4 @@ echo "============================================================"
 echo ""
 
 cd "$WEBSEARCH_DIR"
-exec node dist/index.js
+exec node build/index.js

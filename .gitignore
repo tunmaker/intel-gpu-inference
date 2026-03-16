@@ -6,7 +6,7 @@ llama.cpp/build/
 
 # MCP server build artifacts
 open-websearch/node_modules/
-open-websearch/dist/
+open-websearch/build/
 *.o
 *.a
 *.so
