@@ -1,0 +1,23 @@
+# Template — placeholders are substituted by install.sh / install-mcp.sh:
+#   __INSTALL_DIR__  → absolute path to the intel-gpu-inference directory
+#   __HOME__         → user's home directory
+#
+# Do not edit the installed unit directly (~/.config/systemd/user/open-websearch.service).
+# Edit this file and re-run: scripts/install-mcp.sh
+
+[Unit]
+Description=open-websearch MCP server (web search tools for LLM agents)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
+WorkingDirectory=__INSTALL_DIR__/open-websearch
+ExecStart=/usr/bin/node __INSTALL_DIR__/open-websearch/dist/index.js
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

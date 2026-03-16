@@ -3,6 +3,10 @@ models/
 
 # Build artifacts
 llama.cpp/build/
+
+# MCP server build artifacts
+open-websearch/node_modules/
+open-websearch/dist/
 *.o
 *.a
 *.so
@@ -12,3 +16,4 @@ llama.cpp/build/
 
 # OS
 .DS_Store
+.claude

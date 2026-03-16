@@ -1,388 +1,162 @@
 # Intel Arc A770 LLM Inference Stack
 
-A self-contained, reproducible local LLM inference setup for the **Intel Arc A770 (16GB VRAM)** using **llama.cpp with SYCL backend**. Serves models via an **OpenAI-compatible API** with full **tool/function calling** support.
+Local LLM inference on **Intel Arc A770 16GB** using **llama.cpp with SYCL backend**.
 
-## Why llama.cpp with SYCL?
-
-After evaluating five approaches (see [docs/research.md](docs/research.md)), llama.cpp with SYCL was chosen because it is the only solution that:
-
-- **Actually works** on consumer Intel Arc GPUs (verified on A770, A750, B580)
-- Provides a **full OpenAI-compatible API** (`/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`)
-- Has **native tool/function calling** with parsers for Llama 3.x, Qwen 2.5, Mistral, Hermes, DeepSeek R1
-- Supports **all GGUF quantization formats** (Q4_0, Q8_0, K-quants)
-- Is **actively maintained** and not dependent on archived Intel projects (IPEX-LLM was archived Jan 2026)
-- Can be installed **natively** without Docker
+- OpenAI-compatible API (`/v1/chat/completions`, `/v1/embeddings`)
+- Native tool/function calling for agentic workflows
+- MCP web search server (optional, no API keys)
+- SYCL flash attention + fused Gated Delta Net for Qwen3.5
+- Runs as systemd user services with auto-restart
 
 ## Prerequisites
 
-- **GPU**: Intel Arc A770 16GB (also works on A750, B580, and other Arc GPUs)
+- **GPU**: Intel Arc A770 16GB (also works on A750, B580)
 - **OS**: Ubuntu 22.04/24.04 or Debian 12
-- **Kernel**: 6.2+ (for Intel Arc support; Ubuntu 22.04 HWE or later)
-- **Disk**: ~30GB free (oneAPI toolkit + llama.cpp + model)
-- **RAM**: 16GB+ system RAM recommended
+- **Kernel**: 6.2+
+- **Disk**: ~30GB free (oneAPI + llama.cpp + model)
 
-## Quick Start
+## Deploy
 
 ```bash
-# 1. Clone/download this directory
+git clone <repo-url> ~/intel-gpu-inference
 cd ~/intel-gpu-inference
+git submodule update --init --recursive
 
-# 2. Run the installer (installs drivers, oneAPI, builds llama.cpp, downloads model)
+# Install everything (drivers, oneAPI, llama.cpp build, systemd service)
 ./scripts/install.sh
 
-# 3. Log out and back in if prompted (for group membership changes)
-
-# 4. Start the server
-./scripts/run.sh
-
-# 5. Test the API (in another terminal)
-./scripts/test.sh
+# Or with MCP web search
+./install.sh --with-mcp
 ```
 
-The API will be available at `http://0.0.0.0:8080/v1` (all interfaces by default).
+`install.sh` handles Intel GPU drivers, oneAPI toolkit, llama.cpp SYCL build, environment config, and systemd service setup. Log out and back in if prompted for group changes.
 
-To restrict to localhost only:
+## Models
+
+We use [Unsloth](https://unsloth.ai) GGUF quantizations — they work great with llama.cpp thanks to Dynamic 2.0 quants that upcast important layers.
+
+Prefer **Q8_0** when the model fits in VRAM, fall back to **Q4_0** for larger models. Legacy quants (Q4_0, Q8_0) are significantly faster than K-quants on Intel GPUs due to optimized SYCL MUL_MAT kernels.
+
+## Default Paths
+
+| Path | Description |
+|------|-------------|
+| `~/models/` | GGUF model files |
+| `~/intel-gpu-inference/llama.cpp/` | llama.cpp source and SYCL build |
+| `~/intel-gpu-inference/open-websearch/` | MCP web search server (if installed) |
+| `~/.config/intel-gpu-inference/env` | Environment config (all services) |
+| `~/.config/systemd/user/` | Installed systemd unit files |
+
+## Services
+
+### llama-server — LLM Inference
+
+OpenAI-compatible API serving GGUF models on the Intel Arc GPU.
 
 ```bash
-LLAMA_HOST=127.0.0.1 ./scripts/run.sh
+# Manual
+./scripts/run.sh                          # default model from env config
+./scripts/run.sh /path/to/model.gguf      # specific model
+./scripts/run.sh --ctx 4096               # override context size
+
+# systemd
+systemctl --user status llama-server
+systemctl --user restart llama-server
+journalctl --user -u llama-server -f
 ```
 
-## Running as a systemd Service
+**API**: `http://<host>:8080/v1`
+**Test**: `./scripts/test.sh`
 
-To have the server start automatically on boot and restart on failure:
+### open-websearch — MCP Web Search (Optional)
+
+Multi-engine web search via [MCP protocol](https://modelcontextprotocol.io). No API keys required. Supports DuckDuckGo, Bing, Brave, and others.
 
 ```bash
-# Install the service
-sudo cp configs/llama-server.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now llama-server
+# Install
+./scripts/install-mcp.sh
+
+# Manual
+./scripts/run-mcp.sh
+
+# systemd
+systemctl --user status open-websearch
+systemctl --user restart open-websearch
+journalctl --user -u open-websearch -f
 ```
 
-Common commands:
+**Endpoints**: `http://<host>:3000/sse` (SSE) | `http://<host>:3000/mcp` (streamableHttp)
+**Test**: `./scripts/test-mcp.sh`
 
-```bash
-sudo systemctl status llama-server     # check status
-sudo systemctl restart llama-server    # restart
-sudo systemctl stop llama-server       # stop
-journalctl -u llama-server -f          # follow logs
+**MCP client config:**
+```json
+{
+  "mcpServers": {
+    "web-search": {
+      "transport": { "type": "sse", "url": "http://<host>:3000/sse" }
+    }
+  }
+}
 ```
 
-To change the model or settings, edit `~/.config/intel-gpu-inference/env` and restart the service.
+**Tools**: `search_web`, `fetchArticle`, `fetchGithubReadme`
+
+## Configuration
+
+All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the relevant service.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEFAULT_MODEL` | `~/models/Qwen3VL-8B-Instruct-Q8_0.gguf` | Active model path |
+| `MMPROJ_PATH` | `~/models/mmproj-Qwen3VL-8B-Instruct-F16.gguf` | Vision projector (blank to disable) |
+| `LLAMA_HOST` | `0.0.0.0` | Server bind address |
+| `LLAMA_PORT` | `8080` | Server port |
+| `DEFAULT_SEARCH_ENGINE` | `duckduckgo` | MCP search engine |
+| `PORT` | `3000` | MCP server port |
+| `UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS` | `1` | Allow >4GB VRAM allocations |
+| `ONEAPI_DEVICE_SELECTOR` | auto | GPU selection (set if iGPU conflict) |
 
 ## Directory Structure
 
 ```
 intel-gpu-inference/
-├── README.md              # This file
+├── install.sh                        # Top-level installer (service + optional MCP)
+├── llama-server.service.template     # systemd unit template
+├── open-websearch.service.template   # systemd unit template (MCP)
 ├── scripts/
-│   ├── install.sh         # Full installation script
-│   ├── run.sh             # Server launcher with auto-tuning
-│   └── test.sh            # API test suite (completion, streaming, tool calling)
+│   ├── install.sh                    # Full build installer (drivers, oneAPI, llama.cpp)
+│   ├── install-mcp.sh               # MCP web search installer
+│   ├── run.sh                        # llama-server launcher
+│   ├── run-mcp.sh                    # MCP web search launcher
+│   ├── test.sh                       # LLM API test suite
+│   └── test-mcp.sh                   # MCP server test suite
 ├── configs/
-│   ├── env.sh             # Environment variables (generated by install.sh)
-│   └── llama-server.service  # systemd service unit
+│   ├── llama-server.env.template     # Environment template
+│   └── open-websearch.env.template   # MCP environment template
 ├── docs/
-│   ├── research.md        # Detailed evaluation of all Intel GPU inference options
-│   └── models.md          # Model recommendations for 16GB VRAM
-├── models/                # Downloaded GGUF model files (created by install.sh)
-└── llama.cpp/             # llama.cpp source and build (created by install.sh)
+│   ├── research.md                   # Evaluation of Intel GPU inference options
+│   └── models.md                     # Model recommendations for 16GB VRAM
+├── llama.cpp/                        # Submodule: source and SYCL build
+└── open-websearch/                   # Submodule: MCP web search server
 ```
-
-## How to Swap Models
-
-### Download a new model
-
-```bash
-pip install huggingface-hub
-
-# Example: Download Llama 3.1 8B Instruct Q8
-huggingface-cli download bartowski/Meta-Llama-3.1-8B-Instruct-GGUF \
-    Meta-Llama-3.1-8B-Instruct-Q8_0.gguf \
-    --local-dir ~/intel-gpu-inference/models
-
-# Example: Download Qwen2.5 14B Q4 (larger model, smaller quant)
-huggingface-cli download Qwen/Qwen2.5-14B-Instruct-GGUF \
-    qwen2.5-14b-instruct-q4_0.gguf \
-    --local-dir ~/intel-gpu-inference/models
-```
-
-### Run with a different model
-
-```bash
-./scripts/run.sh ~/intel-gpu-inference/models/Meta-Llama-3.1-8B-Instruct-Q8_0.gguf
-```
-
-### Override context size
-
-```bash
-./scripts/run.sh --ctx 4096 ~/intel-gpu-inference/models/qwen2.5-14b-instruct-q4_0.gguf
-```
-
-## Recommended Models by Use Case
-
-| Use Case | Model | Quant | VRAM | Notes |
-|----------|-------|-------|------|-------|
-| **Tool/Function Calling** | Qwen2.5-7B-Instruct | Q8_0 | ~7.5 GB | Best tool calling at this size |
-| **General Chat** | Llama-3.1-8B-Instruct | Q8_0 | ~8 GB | Well-rounded, good instruction following |
-| **Coding** | Qwen2.5-14B-Instruct | Q4_0 | ~8 GB | Quality jump for code tasks |
-| **Reasoning** | DeepSeek-R1-Distill-Qwen-14B | Q4_0 | ~8 GB | Chain-of-thought reasoning |
-| **Long Context** | Phi-3.5-mini-instruct | Q8_0 | ~4 GB | Fits 16K-32K context easily |
-| **Speed** | Mistral-7B-Instruct-v0.3 | Q4_0 | ~4 GB | Fast with low VRAM footprint |
-
-See [docs/models.md](docs/models.md) for comprehensive model recommendations.
-
-## Quantization on Intel GPUs
-
-**Important**: Legacy quants (Q4_0, Q5_0, Q8_0) are significantly faster than K-quants (Q4_K_M, Q5_K_M) on Intel GPUs. The SYCL backend has optimized MUL_MAT kernels for legacy formats but not yet for K-quants.
-
-| Format | Speed (7B) | Quality | Recommendation |
-|--------|-----------|---------|----------------|
-| Q4_0 | ~55 t/s | Acceptable | Best speed |
-| Q8_0 | ~25-30 t/s | Good | **Best balance for Intel** |
-| Q4_K_M | ~16-20 t/s | Good | Slower, use Q8_0 instead |
-| Q5_K_M | ~14-18 t/s | Better | Slower, use Q8_0 instead |
-
-**Recommendation**: Prefer Q8_0 when the model fits, fall back to Q4_0 for larger models.
-
-## Using the API
-
-### With curl
-
-```bash
-curl http://127.0.0.1:8080/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "max_tokens": 100
-  }'
-```
-
-### With Python (OpenAI client)
-
-```python
-from openai import OpenAI
-
-client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="not-needed")
-
-# Basic completion
-response = client.chat.completions.create(
-    model="default",
-    messages=[{"role": "user", "content": "What is 2+2?"}],
-)
-print(response.choices[0].message.content)
-
-# Tool calling
-tools = [{
-    "type": "function",
-    "function": {
-        "name": "get_weather",
-        "description": "Get weather for a location",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {"type": "string"}
-            },
-            "required": ["location"]
-        }
-    }
-}]
-
-response = client.chat.completions.create(
-    model="default",
-    messages=[{"role": "user", "content": "What's the weather in Paris?"}],
-    tools=tools,
-    tool_choice="auto",
-)
-print(response.choices[0].message.tool_calls)
-```
-
-### With LangChain
-
-```python
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(
-    base_url="http://127.0.0.1:8080/v1",
-    api_key="not-needed",
-    model="default",
-)
-response = llm.invoke("Explain quantum computing in one sentence.")
-```
-
-## Known Limitations with Intel Arc
-
-1. **K-quant performance gap**: Q4_K_M/Q5_K_M run ~3x slower than Q4_0/Q8_0 due to unoptimized SYCL kernels
-2. **No flash attention on some models**: Flash attention may not work with all model architectures on SYCL
-3. **iGPU conflicts**: Systems with integrated + discrete Intel GPUs may need `ONEAPI_DEVICE_SELECTOR` configuration
-4. **oneAPI size**: The toolkit requires ~20GB of disk space
-5. **Volunteer-maintained**: SYCL backend is maintained by community contributors, not a full Intel team
-6. **Performance vs NVIDIA**: Expect roughly 50-70% of equivalent NVIDIA GPU performance for most operations
-7. **Batch inference**: Concurrent request handling works but is less optimized than on CUDA
-
-## Troubleshooting
-
-### Level Zero Runtime Errors
-
-**Error**: `[ERROR] Failed to initialize Level Zero`
-
-```bash
-# Check if Level Zero is installed
-dpkg -l | grep -E "level-zero|libze"
-
-# If missing, install (package names changed in Ubuntu 24.04 Noble):
-# Ubuntu 22.04 (Jammy):
-sudo apt install intel-level-zero-gpu level-zero level-zero-dev
-# Ubuntu 24.04 (Noble) and later:
-sudo apt install libze-intel-gpu1 libze1 libze-dev
-
-# Verify device is accessible:
-ls -la /dev/dri/
-# You should see renderD128 (or similar)
-
-# Check permissions:
-groups  # Should include 'render' and 'video'
-# If not:
-sudo usermod -aG render,video $USER
-# Then log out and back in
-```
-
-### SYCL Device Not Detected
-
-**Error**: `No SYCL devices found` or `sycl-ls` shows no GPU
-
-```bash
-# Source oneAPI environment
-source /opt/intel/oneapi/setvars.sh
-
-# List SYCL devices
-sycl-ls
-
-# If only iGPU shows up, force discrete GPU:
-export ONEAPI_DEVICE_SELECTOR="level_zero:1"
-# Then try sycl-ls again
-
-# If no devices show at all, check kernel driver:
-dmesg | grep -i "i915\|xe"
-# Ensure the driver is loaded:
-lsmod | grep -E "i915|xe"
-```
-
-### VRAM Allocation Errors
-
-**Error**: `failed to allocate memory` or `UR_RESULT_ERROR_OUT_OF_RESOURCES`
-
-```bash
-# This is the #1 issue. Set the relaxed allocation limit:
-export UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=1
-
-# This is already set in ~/.config/intel-gpu-inference/env, but verify:
-echo $UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS
-# Should print: 1
-
-# If the model still doesn't fit, use a smaller quant or reduce context:
-./scripts/run.sh --ctx 2048 /path/to/model.gguf
-```
-
-### i915 vs xe Driver
-
-Intel Arc GPUs can use either the `i915` or `xe` kernel driver:
-
-```bash
-# Check which driver is in use:
-lspci -k | grep -A 3 "VGA.*Intel"
-
-# i915: Legacy driver, works on Ubuntu 22.04+
-# xe: Newer driver, default on newer kernels (6.8+)
-# Both work with llama.cpp SYCL. If you have issues with one, try the other.
-
-# Force i915 (if xe causes issues):
-# Add to kernel command line: i915.force_probe=56a1 xe.force_probe=!56a1
-# (56a1 is the PCI ID for Arc A770; check yours with lspci)
-```
-
-### Slow Performance
-
-```bash
-# 1. Verify GPU is being used (not CPU fallback)
-# Look for "SYCL" and "Intel" in server startup output
-
-# 2. Use legacy quants (Q4_0, Q8_0) instead of K-quants
-#    Q4_K_M is ~3x slower than Q4_0 on Intel GPUs
-
-# 3. Check thermal throttling
-sudo intel_gpu_top  # (from intel-gpu-tools package)
-
-# 4. Ensure flat device hierarchy
-export ZE_FLAT_DEVICE_HIERARCHY=FLAT
-
-# 5. Disable simultaneous multithreading if prompt processing is slow
-# (Requires BIOS change - test first to verify improvement)
-```
-
-### Build Errors
-
-```bash
-# Ensure oneAPI compilers are in PATH:
-source /opt/intel/oneapi/setvars.sh
-which icx icpx  # Should show paths under /opt/intel/
-
-# Clean rebuild:
-cd ~/intel-gpu-inference/llama.cpp
-rm -rf build
-cmake -B build -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx
-cmake --build build --config Release -j $(nproc)
-
-# If cmake can't find SYCL, ensure you sourced setvars.sh in the SAME shell
-```
-
-### Server Crashes on Start
-
-```bash
-# Try with minimal settings:
-./llama.cpp/build/bin/llama-server \
-    --model models/your-model.gguf \
-    --ctx-size 2048 \
-    --n-gpu-layers 1
-
-# If it works with 1 GPU layer, gradually increase:
-# --n-gpu-layers 10, 20, 30, -1
-# This helps identify VRAM limits
-
-# Check dmesg for GPU errors:
-dmesg | tail -20
-```
-
-## Performance Tuning Tips
-
-1. **Use Q8_0 or Q4_0 quantization** (legacy quants with optimized SYCL kernels)
-2. **Set `UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=1`** (already in env.sh)
-3. **Set `ZE_FLAT_DEVICE_HIERARCHY=FLAT`** for consistent single-GPU behavior
-4. **Right-size context**: Larger context = more VRAM. Start with 4096 and increase if needed
-5. **Use `--flash-attn`** when supported by the model architecture
-6. **Monitor with `intel_gpu_top`**: Install via `sudo apt install intel-gpu-tools`
-7. **Avoid K-quants** for speed-critical applications on Intel GPUs
-8. **Keep oneAPI updated**: Newer versions often include SYCL performance improvements
-
-## Environment Variables Reference
-
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS` | Allow >4GB VRAM allocations | `1` (set in env.sh) |
-| `ZE_FLAT_DEVICE_HIERARCHY` | Device hierarchy mode | `FLAT` |
-| `ONEAPI_DEVICE_SELECTOR` | Select specific GPU | Auto (set if iGPU conflict) |
-| `LLAMA_HOST` | Server bind address | `0.0.0.0` (use `127.0.0.1` to restrict to localhost) |
-| `LLAMA_PORT` | Server port | `8080` |
 
 ## Links
 
-### llama.cpp SYCL
-- [llama.cpp SYCL Backend Docs (Linux)](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/SYCL.md#linux)
-- [llama.cpp Server API](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
-- [llama.cpp Function Calling](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)
+### llama.cpp
+- [SYCL Backend (Linux)](https://github.com/ggml-org/llama.cpp/blob/master/docs/backend/SYCL.md#linux)
+- [Server API Reference](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md)
+- [Function Calling](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)
 
-### Intel GPU Drivers
-- [Intel Client GPU Drivers (Ubuntu 22.04)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-22-04)
-- [Intel Client GPU Drivers (Ubuntu 24.04+)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-latest)
+### Intel
+- [GPU Drivers (Ubuntu 22.04)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-22-04)
+- [GPU Drivers (Ubuntu 24.04+)](https://dgpu-docs.intel.com/driver/client/overview.html#ubuntu-latest)
+- [oneAPI Base Toolkit](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
 
-### Intel oneAPI
-- [Intel oneAPI Base Toolkit Download](https://www.intel.com/content/www/us/en/developer/tools/oneapi/base-toolkit-download.html)
+### Models
+- [Unsloth GGUF Models](https://unsloth.ai/docs/models)
+- [Unsloth Dynamic 2.0 Quants](https://unsloth.ai/blog/dynamic-4bit)
+- [docs/models.md](docs/models.md) — VRAM-tested recommendations for Arc A770
+
+### MCP
+- [Model Context Protocol](https://modelcontextprotocol.io)
+- [open-websearch](https://github.com/Aas-ee/open-webSearch) — Multi-engine search MCP server

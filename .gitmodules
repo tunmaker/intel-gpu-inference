@@ -1,3 +1,6 @@
 [submodule "llama.cpp"]
 	path = llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "open-websearch"]
+	path = open-websearch
+	url = https://github.com/Aas-ee/open-webSearch.git

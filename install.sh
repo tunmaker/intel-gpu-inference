@@ -33,3 +33,10 @@ systemctl --user daemon-reload
 systemctl --user enable llama-server.service
 systemctl --user start llama-server.service
 echo "llama-server installed and started"
+
+# 5. (Optional) MCP web search server
+if [[ "${1:-}" == "--with-mcp" ]]; then
+    echo ""
+    echo "[intel-gpu-inference] Installing open-websearch MCP server..."
+    bash "$INSTALL_DIR/scripts/install-mcp.sh"
+fi
