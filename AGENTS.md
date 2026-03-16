@@ -4,9 +4,123 @@ This project provides an Intel Arc GPU inference stack using llama.cpp with SYCL
 
 ## Project Overview
 
-- **Main purpose**: OpenAI-compatible API server for LLM inference on Intel Arc GPUs
-- **Language**: Shell scripts (Bash), Python (benchmarking), C++ (llama.cpp)
-- **Submodule**: Uses llama.cpp as a git submodule (in `llama.cpp/`)
+- **Main purpose**: Local AI inference stack on Intel Arc A770 16GB (LLM, speech-to-text, web search)
+- **Language**: Shell scripts (Bash), Python (benchmarking), C++ (llama.cpp, whisper.cpp)
+- **Submodules**: `llama.cpp/`, `whisper.cpp/`, `open-websearch/`
+
+---
+
+## Exposed Services
+
+These services run on the host machine and are available for external agents to consume.
+
+### llama-server — LLM Inference (port 8080)
+
+OpenAI-compatible API for chat completions, embeddings, and tool/function calling.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/chat/completions` | POST | Chat completion (streaming supported) |
+| `/v1/embeddings` | POST | Text embeddings |
+| `/v1/models` | GET | List available models |
+| `/health` | GET | Server health check |
+
+```bash
+# Chat completion
+curl http://<host>:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"default","messages":[{"role":"user","content":"Hello"}]}'
+
+# Streaming
+curl -N http://<host>:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"default","messages":[{"role":"user","content":"Hello"}],"stream":true}'
+
+# Tool calling
+curl http://<host>:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"default","messages":[{"role":"user","content":"Search for AI news"}],"tools":[{"type":"function","function":{"name":"search","description":"Web search","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}}]}'
+```
+
+### whisper-server — Speech Recognition (port 9090)
+
+Multilingual speech-to-text. Accepts audio files (WAV, MP3, FLAC, OGG, etc.) via multipart form upload. Supports Arabic, English, French, Chinese, and 90+ languages.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/inference` | POST | Transcribe audio (multipart/form-data) |
+
+```bash
+# Transcribe audio file
+curl http://<host>:9090/inference \
+  -F "file=@audio.wav" \
+  -F "response_format=json" \
+  -F "language=auto"
+
+# Response: {"text": "transcribed text here"}
+```
+
+**Parameters** (form fields):
+- `file` — audio file (required)
+- `response_format` — `json`, `text`, `srt`, `vtt`, `verbose_json` (default: `json`)
+- `language` — ISO 639-1 code or `auto` (default: `auto`)
+- `translate` — `true` to translate to English
+
+### open-websearch — MCP Web Search (port 3000)
+
+Multi-engine web search via MCP protocol. No API keys required. Usable by MCP-compatible clients.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mcp` | POST | MCP streamableHttp (initialize, tools/list, tools/call) |
+| `/mcp` | GET | MCP server-to-client notifications (SSE) |
+| `/sse` | GET | Legacy SSE transport |
+| `/messages` | POST | Legacy SSE message handling |
+
+```bash
+# Initialize MCP session
+curl http://<host>:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"my-agent","version":"1.0"}}}'
+
+# List tools (use Mcp-Session-Id from initialize response)
+curl http://<host>:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <session-id>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+
+# Search the web
+curl http://<host>:3000/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Mcp-Session-Id: <session-id>" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search","arguments":{"query":"latest AI news","limit":5}}}'
+```
+
+**MCP client config** (for Claude Desktop, Cursor, etc.):
+```json
+{
+  "mcpServers": {
+    "web-search": {
+      "transport": { "type": "sse", "url": "http://<host>:3000/sse" }
+    }
+  }
+}
+```
+
+**Available tools**: `search`, `fetchWebContent`, `fetchGithubReadme`, `fetchLinuxDoArticle`, `fetchCsdnArticle`, `fetchJuejinArticle`
+
+### Service Summary
+
+| Service | Port | Protocol | Status |
+|---------|------|----------|--------|
+| llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
+| whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
+| open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
+
+All services bind to `0.0.0.0` by default and are accessible on the local network.
 
 ---
 
@@ -257,8 +371,14 @@ def main():
 | `UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS` | Allow >4GB VRAM | `1` |
 | `ZE_FLAT_DEVICE_HIERARCHY` | Device hierarchy | `FLAT` |
 | `ONEAPI_DEVICE_SELECTOR` | Select GPU device | auto |
-| `LLAMA_HOST` | Server bind address | `0.0.0.0` |
-| `LLAMA_PORT` | Server port | `8080` |
+| `LLAMA_HOST` | LLM server bind address | `0.0.0.0` |
+| `LLAMA_PORT` | LLM server port | `8080` |
+| `WHISPER_MODEL` | Whisper model path | `~/models/ggml-large-v3.bin` |
+| `WHISPER_HOST` | Whisper server bind address | `0.0.0.0` |
+| `WHISPER_PORT` | Whisper server port | `9090` |
+| `WHISPER_LANGUAGE` | Language (auto, en, ar, fr, zh) | `auto` |
+| `DEFAULT_SEARCH_ENGINE` | MCP search engine | `duckduckgo` |
+| `PORT` | MCP server port | `3000` |
 
 Config file: `~/.config/intel-gpu-inference/env`
 

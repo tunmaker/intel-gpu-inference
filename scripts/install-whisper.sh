@@ -71,6 +71,37 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # ============================================================================
+# Step 0: Install ffmpeg (needed for audio conversion)
+# ============================================================================
+
+install_ffmpeg() {
+    if command -v ffmpeg &>/dev/null; then
+        log_ok "ffmpeg already installed ($(ffmpeg -version 2>&1 | head -1 | awk '{print $3}'))"
+        return
+    fi
+
+    log_info "Installing ffmpeg (required for audio format conversion)..."
+
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq ffmpeg
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S --noconfirm ffmpeg
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y ffmpeg
+    else
+        log_warn "Could not detect package manager. Please install ffmpeg manually."
+        return
+    fi
+
+    if command -v ffmpeg &>/dev/null; then
+        log_ok "ffmpeg installed"
+    else
+        log_warn "ffmpeg installation may have failed. whisper-server --convert flag requires it."
+    fi
+}
+
+# ============================================================================
 # Step 1: Initialize submodule and pull latest
 # ============================================================================
 
@@ -280,6 +311,8 @@ main() {
     echo "============================================================"
     echo ""
 
+    install_ffmpeg
+    echo ""
     init_submodule
     echo ""
     build_whisper
