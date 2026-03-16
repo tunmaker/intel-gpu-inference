@@ -5,8 +5,12 @@
 # This script:
 #   1. Detects/installs Intel GPU compute drivers
 #   2. Installs oneAPI toolkit (compiler + MKL)
-#   3. Builds llama.cpp with SYCL backend
-#   4. Downloads a recommended default model
+#   3. Builds llama.cpp with SYCL backend (from git submodule)
+#   4. Creates XDG-compliant environment config
+#
+# Usage:
+#   ./scripts/install.sh            # Install (skip rebuild if binary exists)
+#   ./scripts/install.sh --update   # Pull latest + force rebuild
 #
 # Tested on: Ubuntu 22.04/24.04, Debian 12
 # Target GPU: Intel Arc A770 (16GB)
@@ -22,8 +26,6 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LLAMA_CPP_DIR="$PROJECT_DIR/llama.cpp"
 # MODELS_DIR can be overridden via environment variable; default is ~/models
 MODELS_DIR="${MODELS_DIR:-$HOME/models}"
-LLAMA_CPP_REPO="https://github.com/ggml-org/llama.cpp.git"
-
 # Default model to download (bartowski provides single-file GGUFs)
 DEFAULT_MODEL_REPO="bartowski/Qwen2.5-7B-Instruct-GGUF"
 DEFAULT_MODEL_FILE="Qwen2.5-7B-Instruct-Q8_0.gguf"
@@ -302,23 +304,25 @@ build_llama_cpp() {
     source /opt/intel/oneapi/setvars.sh 2>/dev/null || true
     set -u
 
-    # Clone or update llama.cpp
-    if [[ -d "$LLAMA_CPP_DIR" ]]; then
-        log_info "llama.cpp directory exists, pulling latest..."
-        cd "$LLAMA_CPP_DIR"
-        git pull --ff-only || {
-            log_warn "git pull failed. Using existing version."
-        }
-    else
-        log_info "Cloning llama.cpp..."
-        git clone "$LLAMA_CPP_REPO" "$LLAMA_CPP_DIR"
+    # Initialize submodule and pull latest master
+    cd "$PROJECT_DIR"
+    if [[ ! -f "$LLAMA_CPP_DIR/CMakeLists.txt" ]]; then
+        log_info "Initializing llama.cpp submodule..."
+        git submodule update --init llama.cpp
     fi
 
     cd "$LLAMA_CPP_DIR"
+    log_info "Updating llama.cpp to latest master..."
+    git checkout master 2>/dev/null || true
+    git pull --ff-only || {
+        log_warn "git pull failed. Using existing version."
+    }
+    log_info "llama.cpp at: $(git log --oneline -1)"
 
-    # Skip rebuild if binary already exists
-    if [[ -x "$LLAMA_CPP_DIR/build/bin/llama-server" ]] || [[ -x "$LLAMA_CPP_DIR/build/llama-server" ]]; then
-        log_ok "llama-server already built, skipping rebuild (delete llama.cpp/build/ to force)"
+    # Skip rebuild if binary exists and --update was not passed
+    if [[ "${FORCE_UPDATE:-false}" != "true" ]] && \
+       { [[ -x "$LLAMA_CPP_DIR/build/bin/llama-server" ]] || [[ -x "$LLAMA_CPP_DIR/build/llama-server" ]]; }; then
+        log_ok "llama-server already built, skipping rebuild (use --update to force)"
         return
     fi
 
@@ -497,10 +501,22 @@ ENVEOF
 # ============================================================================
 
 main() {
+    # Parse flags
+    FORCE_UPDATE=false
+    for arg in "$@"; do
+        case "$arg" in
+            --update) FORCE_UPDATE=true ;;
+        esac
+    done
+    export FORCE_UPDATE
+
     echo ""
     echo "============================================================"
     echo "  Intel Arc A770 LLM Inference Stack Installer"
     echo "  Backend: llama.cpp with SYCL"
+    if [[ "$FORCE_UPDATE" == "true" ]]; then
+        echo "  Mode: UPDATE (pull latest + rebuild)"
+    fi
     echo "============================================================"
     echo ""
 

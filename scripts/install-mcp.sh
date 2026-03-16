@@ -42,14 +42,18 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 # ============================================================================
 
 INSTALL_SERVICE=true
+FORCE_UPDATE=false
+export FORCE_UPDATE
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --no-service) INSTALL_SERVICE=false; shift ;;
+        --update) FORCE_UPDATE=true; export FORCE_UPDATE; shift ;;
         --help|-h)
-            echo "Usage: $0 [--no-service]"
+            echo "Usage: $0 [--no-service] [--update]"
             echo ""
             echo "Options:"
             echo "  --no-service  Skip systemd service installation"
+            echo "  --update      Pull latest + force rebuild"
             exit 0
             ;;
         *) log_error "Unknown argument: $1"; exit 1 ;;
@@ -129,19 +133,23 @@ install_nodejs() {
 build_websearch() {
     log_info "=== Step 2: Building open-websearch MCP server ==="
 
+    cd "$PROJECT_DIR"
     if [[ ! -f "$WEBSEARCH_DIR/package.json" ]]; then
         log_info "Initializing open-websearch submodule..."
-        cd "$PROJECT_DIR"
         git submodule update --init open-websearch
-    else
-        log_info "open-websearch submodule already initialized"
     fi
 
     cd "$WEBSEARCH_DIR"
+    log_info "Updating open-websearch to latest master..."
+    git checkout main 2>/dev/null || git checkout master 2>/dev/null || true
+    git pull --ff-only || {
+        log_warn "git pull failed. Using existing version."
+    }
+    log_info "open-websearch at: $(git log --oneline -1)"
 
-    # Skip rebuild if dist/ already exists
-    if [[ -f "$WEBSEARCH_DIR/build/index.js" ]]; then
-        log_ok "open-websearch already built (delete open-websearch/dist/ to force rebuild)"
+    # Skip rebuild if build exists and --update was not passed
+    if [[ "${FORCE_UPDATE:-false}" != "true" ]] && [[ -f "$WEBSEARCH_DIR/build/index.js" ]]; then
+        log_ok "open-websearch already built (use --update to force rebuild)"
         return
     fi
 
