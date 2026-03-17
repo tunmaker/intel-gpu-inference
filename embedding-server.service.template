@@ -1,0 +1,23 @@
+# Template — placeholders are substituted by intel-gpu-inference/install.sh:
+#   __INSTALL_DIR__  → absolute path to the intel-gpu-inference directory
+#   __HOME__         → user's home directory
+#
+# Do not edit the installed unit directly (~/.config/systemd/user/embedding-server.service).
+# Edit this file and re-run: intel-gpu-inference/install.sh --with-embedding
+
+[Unit]
+Description=llama.cpp SYCL embedding server (Intel Arc A770)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/scripts/run-embedding.sh
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

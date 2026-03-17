@@ -5,9 +5,11 @@
 # Usage:
 #   ./install.sh                    # Install llama-server service
 #   ./install.sh --with-mcp         # Also install MCP web search server
-#   ./install.sh --update           # Pull latest submodules + rebuild all
-#   ./install.sh --with-whisper      # Also install whisper speech recognition
-#   ./install.sh --update --with-mcp --with-whisper # Update everything
+#   ./install.sh --update              # Pull latest submodules + rebuild all
+#   ./install.sh --with-whisper        # Also install whisper speech recognition
+#   ./install.sh --with-embedding      # Also install embedding server
+#   ./install.sh --all                 # Install everything (mcp + whisper + embedding)
+#   ./install.sh --update --all        # Update + reinstall everything
 
 set -euo pipefail
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,12 +17,15 @@ INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Parse flags
 WITH_MCP=false
 WITH_WHISPER=false
+WITH_EMBEDDING=false
 UPDATE=false
 for arg in "$@"; do
     case "$arg" in
-        --with-mcp)     WITH_MCP=true ;;
-        --with-whisper) WITH_WHISPER=true ;;
-        --update)       UPDATE=true ;;
+        --with-mcp)       WITH_MCP=true ;;
+        --with-whisper)   WITH_WHISPER=true ;;
+        --with-embedding) WITH_EMBEDDING=true ;;
+        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true ;;
+        --update)         UPDATE=true ;;
     esac
 done
 
@@ -86,4 +91,11 @@ if [[ "$WITH_WHISPER" == "true" ]]; then
     else
         bash "$INSTALL_DIR/scripts/install-whisper.sh"
     fi
+fi
+
+# 8. (Optional) llama.cpp embedding server
+if [[ "$WITH_EMBEDDING" == "true" ]]; then
+    echo ""
+    echo "[intel-gpu-inference] Installing llama.cpp embedding server..."
+    bash "$INSTALL_DIR/scripts/install-embedding.sh"
 fi
