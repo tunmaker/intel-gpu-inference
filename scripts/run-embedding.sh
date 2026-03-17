@@ -151,7 +151,7 @@ exec "$SERVER_BIN" \
     --n-gpu-layers $GPU_LAYERS \
     --split-mode none \
     --main-gpu 0 \
-    --embeddings \
-    --embedding-only \
-    --mmap \
+    --embedding \
+    --pooling cls \
+    -ub 8192 \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
