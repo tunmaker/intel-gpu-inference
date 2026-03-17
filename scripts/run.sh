@@ -256,5 +256,6 @@ exec "$SERVER_BIN" \
     --top-p 0.95 \
     --top-k 20 \
     --min-p 0.0 \
+    --embeddings \
     --chat-template-kwargs '{"enable_thinking":false}' \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
