@@ -4,6 +4,7 @@ Local LLM inference on **Intel Arc A770 16GB** using **llama.cpp with SYCL backe
 
 - OpenAI-compatible API (`/v1/chat/completions`, `/v1/embeddings`)
 - Native tool/function calling for agentic workflows
+- Dedicated embedding server (optional, separate llama.cpp instance)
 - MCP web search server (optional, no API keys)
 - Speech-to-text via whisper.cpp (optional, multilingual)
 - SYCL flash attention + fused Gated Delta Net for Qwen3.5
@@ -30,7 +31,8 @@ git submodule update --init --recursive
 # Or with optional services
 ./install.sh --with-mcp              # + MCP web search
 ./install.sh --with-whisper          # + speech recognition
-./install.sh --with-mcp --with-whisper  # + both
+./install.sh --with-embedding        # + embedding server
+./install.sh --all                   # + everything
 ```
 
 `install.sh` handles Intel GPU drivers, oneAPI toolkit, llama.cpp SYCL build, environment config, and systemd service setup. Log out and back in if prompted for group changes.
@@ -114,6 +116,28 @@ journalctl --user -u open-websearch -f
 
 **Tools**: `search_web`, `fetchArticle`, `fetchGithubReadme`
 
+### embedding-server — Dedicated Embedding Server (Optional)
+
+A separate llama.cpp instance running in embedding-only mode on port 8085. Keeps embedding workloads isolated from the main inference server.
+
+```bash
+# Install (appends config to env, installs systemd service)
+./scripts/install-embedding.sh
+
+# Manual
+./scripts/run-embedding.sh
+./scripts/run-embedding.sh /path/to/model.gguf
+
+# systemd
+systemctl --user status embedding-server
+systemctl --user restart embedding-server
+journalctl --user -u embedding-server -f
+```
+
+**API**: `POST http://<host>:8085/v1/embeddings` (OpenAI-compatible)
+**Test**: `./scripts/test-embedding.sh`
+**Model**: set `EMBEDDING_MODEL` in `~/.config/intel-gpu-inference/env`
+
 ### whisper-server — Speech Recognition (Optional)
 
 Multilingual speech-to-text via [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with SYCL GPU acceleration. Supports Arabic, English, French, Chinese, and 90+ languages.
@@ -148,6 +172,10 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 | `LLAMA_PORT` | `8080` | Server port |
 | `DEFAULT_SEARCH_ENGINE` | `duckduckgo` | MCP search engine |
 | `PORT` | `3000` | MCP server port |
+| `EMBEDDING_MODEL` | *(required)* | Embedding model path (.gguf) |
+| `EMBEDDING_HOST` | `0.0.0.0` | Embedding server bind address |
+| `EMBEDDING_PORT` | `8085` | Embedding server port |
+| `EMBEDDING_CTX` | `8192` | Embedding context size |
 | `WHISPER_MODEL` | `~/models/ggml-large-v3.bin` | Whisper model path |
 | `WHISPER_HOST` | `0.0.0.0` | Whisper server bind address |
 | `WHISPER_PORT` | `9090` | Whisper server port |
@@ -160,24 +188,29 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 
 ```
 intel-gpu-inference/
-├── install.sh                        # Top-level installer (service + optional MCP/whisper)
+├── install.sh                        # Top-level installer (service + optional MCP/whisper/embedding)
 ├── llama-server.service.template     # systemd unit template
 ├── open-websearch.service.template   # systemd unit template (MCP)
 ├── whisper-server.service.template   # systemd unit template (whisper)
+├── embedding-server.service.template # systemd unit template (embedding)
 ├── scripts/
 │   ├── install.sh                    # Full build installer (drivers, oneAPI, llama.cpp)
-│   ├── install-mcp.sh               # MCP web search installer
+│   ├── install-mcp.sh                # MCP web search installer
 │   ├── install-whisper.sh            # whisper.cpp speech recognition installer
+│   ├── install-embedding.sh          # embedding server installer
 │   ├── run.sh                        # llama-server launcher
 │   ├── run-mcp.sh                    # MCP web search launcher
 │   ├── run-whisper.sh                # whisper-server launcher
+│   ├── run-embedding.sh              # embedding-server launcher
 │   ├── test.sh                       # LLM API test suite
 │   ├── test-mcp.sh                   # MCP server test suite
-│   └── test-whisper.sh               # whisper server test suite
+│   ├── test-whisper.sh               # whisper server test suite
+│   └── test-embedding.sh             # embedding server test suite
 ├── configs/
 │   ├── llama-server.env.template     # Environment template
 │   ├── open-websearch.env.template   # MCP environment template
-│   └── whisper-server.env.template   # Whisper environment template
+│   ├── whisper-server.env.template   # Whisper environment template
+│   └── embedding-server.env.template # Embedding environment template
 ├── docs/
 │   ├── research.md                   # Evaluation of Intel GPU inference options
 │   └── models.md                     # Model recommendations for 16GB VRAM

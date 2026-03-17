@@ -4,7 +4,7 @@ This project provides an Intel Arc GPU inference stack using llama.cpp with SYCL
 
 ## Project Overview
 
-- **Main purpose**: Local AI inference stack on Intel Arc A770 16GB (LLM, speech-to-text, web search)
+- **Main purpose**: Local AI inference stack on Intel Arc A770 16GB (LLM, embeddings, speech-to-text, web search)
 - **Language**: Shell scripts (Bash), Python (benchmarking), C++ (llama.cpp, whisper.cpp)
 - **Submodules**: `llama.cpp/`, `whisper.cpp/`, `open-websearch/`
 
@@ -40,6 +40,29 @@ curl -N http://<host>:8080/v1/chat/completions \
 curl http://<host>:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"model":"default","messages":[{"role":"user","content":"Search for AI news"}],"tools":[{"type":"function","function":{"name":"search","description":"Web search","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}}]}'
+```
+
+### embedding-server — Dedicated Embeddings (port 8085)
+
+OpenAI-compatible embeddings API running a separate llama.cpp instance in embedding-only mode.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/embeddings` | POST | Generate text embeddings |
+| `/health` | GET | Server health check |
+
+```bash
+# Generate embeddings
+curl http://<host>:8085/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Your text here", "model": "embedding"}'
+
+# Response: {"data":[{"embedding":[0.123, ...], "index":0}], ...}
+
+# Batch embeddings
+curl http://<host>:8085/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"input": ["text one", "text two"], "model": "embedding"}'
 ```
 
 ### whisper-server — Speech Recognition (port 9090)
@@ -117,6 +140,7 @@ curl http://<host>:3000/mcp \
 | Service | Port | Protocol | Status |
 |---------|------|----------|--------|
 | llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
+| embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
 | whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
 
@@ -373,6 +397,10 @@ def main():
 | `ONEAPI_DEVICE_SELECTOR` | Select GPU device | auto |
 | `LLAMA_HOST` | LLM server bind address | `0.0.0.0` |
 | `LLAMA_PORT` | LLM server port | `8080` |
+| `EMBEDDING_MODEL` | Embedding model path | *(required)* |
+| `EMBEDDING_HOST` | Embedding server bind address | `0.0.0.0` |
+| `EMBEDDING_PORT` | Embedding server port | `8085` |
+| `EMBEDDING_CTX` | Embedding context size | `8192` |
 | `WHISPER_MODEL` | Whisper model path | `~/models/ggml-large-v3.bin` |
 | `WHISPER_HOST` | Whisper server bind address | `0.0.0.0` |
 | `WHISPER_PORT` | Whisper server port | `9090` |
