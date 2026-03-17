@@ -40,9 +40,10 @@ echo "============================================================"
 
 run_test "Server Reachable"
 
-HTTP_CODE=$(curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$BASE_URL/health" 2>/dev/null || echo "000")
+HTTP_CODE=$(curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$BASE_URL/health" 2>/dev/null)
+CURL_RC=$?
 
-if [[ "$HTTP_CODE" != "000" ]]; then
+if [[ $CURL_RC -eq 0 && "$HTTP_CODE" != "000" ]]; then
     echo -e "${GREEN}PASS${NC}: Server is listening (HTTP $HTTP_CODE)"
     PASS=$((PASS + 1))
 else
