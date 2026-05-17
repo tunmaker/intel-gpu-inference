@@ -1,0 +1,24 @@
+# Template — placeholders are substituted by intel-gpu-inference/install.sh:
+#   __INSTALL_DIR__  → absolute path to the intel-gpu-inference directory
+#   __HOME__         → user's home directory
+#
+# Second bge-m3 embedding instance on port 8086 (see run-embedding-2.sh).
+# Do not edit the installed unit directly (~/.config/systemd/user/embedding-server-2.service).
+# Edit this file and re-run: intel-gpu-inference/install.sh --with-embedding
+
+[Unit]
+Description=llama.cpp SYCL embedding server #2 (Intel Arc A770, port 8086)
+After=network.target embedding-server.service
+
+[Service]
+Type=simple
+EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=__INSTALL_DIR__/scripts/run-embedding-2.sh
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

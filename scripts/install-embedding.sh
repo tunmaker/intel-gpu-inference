@@ -128,23 +128,26 @@ install_service() {
 
     log_info "=== Step 3: Installing systemd user service ==="
 
-    local template="$PROJECT_DIR/embedding-server.service.template"
-    if [[ ! -f "$template" ]]; then
-        log_error "Service template not found: $template"
-        exit 1
-    fi
-
     mkdir -p "$HOME/.config/systemd/user"
-    sed -e "s|__HOME__|$HOME|g" \
-        -e "s|__INSTALL_DIR__|$PROJECT_DIR|g" \
-        "$template" \
-        > "$HOME/.config/systemd/user/embedding-server.service"
+
+    for unit in embedding-server embedding-server-2; do
+        local template="$PROJECT_DIR/${unit}.service.template"
+        if [[ ! -f "$template" ]]; then
+            log_error "Service template not found: $template"
+            exit 1
+        fi
+
+        sed -e "s|__HOME__|$HOME|g" \
+            -e "s|__INSTALL_DIR__|$PROJECT_DIR|g" \
+            "$template" \
+            > "$HOME/.config/systemd/user/${unit}.service"
+    done
 
     systemctl --user daemon-reload
-    systemctl --user enable embedding-server.service
-    systemctl --user start embedding-server.service
+    systemctl --user enable embedding-server.service embedding-server-2.service
+    systemctl --user restart embedding-server.service embedding-server-2.service
 
-    log_ok "embedding-server service installed and started"
+    log_ok "embedding-server + embedding-server-2 services installed and started"
 }
 
 # ============================================================================
@@ -170,15 +173,17 @@ main() {
     echo -e "  ${GREEN}embedding-server installed!${NC}"
     echo "============================================================"
     echo ""
-    echo "  Endpoint:"
-    echo "    POST http://0.0.0.0:8085/v1/embeddings"
+    echo "  Endpoints:"
+    echo "    POST http://0.0.0.0:8085/v1/embeddings   (embedding-server)"
+    echo "    POST http://0.0.0.0:8086/v1/embeddings   (embedding-server-2)"
     echo ""
     echo "  Model:    set EMBEDDING_MODEL in ~/.config/intel-gpu-inference/env"
     echo ""
     echo "  Management:"
-    echo "    Status:   systemctl --user status embedding-server"
+    echo "    Status:   systemctl --user status embedding-server embedding-server-2"
     echo "    Logs:     journalctl --user -u embedding-server -f"
-    echo "    Restart:  systemctl --user restart embedding-server"
+    echo "              journalctl --user -u embedding-server-2 -f"
+    echo "    Restart:  systemctl --user restart embedding-server embedding-server-2"
     echo ""
     echo "  Config:     ~/.config/intel-gpu-inference/env"
     echo ""

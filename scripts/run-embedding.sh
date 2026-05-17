@@ -143,15 +143,34 @@ echo ""
 echo "============================================================"
 echo ""
 
+#exec "$SERVER_BIN" \
+#    --model "$MODEL_PATH" \
+#    --host "$HOST" \
+#    --port "$PORT" \
+#    --ctx-size "$CONTEXT_SIZE" \
+#    --n-gpu-layers $GPU_LAYERS \
+#    --split-mode none \
+#    --main-gpu 0 \
+#    --embedding \
+#    --pooling cls \
+#    -ub 8192 \
+#    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+#bge-m3 optimized for concurrent embedding
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
-    --host "$HOST" \
-    --port "$PORT" \
-    --ctx-size "$CONTEXT_SIZE" \
-    --n-gpu-layers $GPU_LAYERS \
-    --split-mode none \
-    --main-gpu 0 \
+    --alias bge-m3 \
+    --host "$HOST" --port "$PORT" \
+    --ctx-size 20480 \
+    -b 4096 -ub 4096\
+    --n-gpu-layers 99 \
+    --split-mode none --main-gpu 0 \
     --embedding \
     --pooling cls \
-    -ub 8192 \
+    --parallel 6 \
+    --threads 4 --threads-batch 16 \
+    --cache-ram 0 \
+    --mlock \
+    --no-warmup \
+    --rope-scaling none \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
