@@ -23,11 +23,20 @@ if [ -z "${ONEAPI_SETVARS_DONE:-}" ]; then
 fi
 
 ENV_FILE="$HOME/.config/intel-gpu-inference/env"
+# Preserve caller-provided overrides across env-file sourcing
+_PRE_EMBEDDING_PORT="${EMBEDDING_PORT:-}"
+_PRE_EMBEDDING_HOST="${EMBEDDING_HOST:-}"
+_PRE_EMBEDDING_MODEL="${EMBEDDING_MODEL:-}"
+_PRE_EMBEDDING_CTX="${EMBEDDING_CTX:-}"
 if [[ -f "$ENV_FILE" ]]; then
     set +eu
     # shellcheck disable=SC1090
     source "$ENV_FILE"
     set -eu
+    [[ -n "$_PRE_EMBEDDING_PORT"  ]] && EMBEDDING_PORT="$_PRE_EMBEDDING_PORT"
+    [[ -n "$_PRE_EMBEDDING_HOST"  ]] && EMBEDDING_HOST="$_PRE_EMBEDDING_HOST"
+    [[ -n "$_PRE_EMBEDDING_MODEL" ]] && EMBEDDING_MODEL="$_PRE_EMBEDDING_MODEL"
+    [[ -n "$_PRE_EMBEDDING_CTX"   ]] && EMBEDDING_CTX="$_PRE_EMBEDDING_CTX"
 else
     echo "[ERROR] Config not found: $ENV_FILE"
     echo "Run install.sh first to create the config."
