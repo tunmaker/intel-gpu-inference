@@ -20,3 +20,5 @@ whisper.cpp/build/
 # OS
 .DS_Store
 .claude
+
+*.gguf

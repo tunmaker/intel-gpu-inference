@@ -1,0 +1,13 @@
+cmake -B build -DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build --parallel $(nproc)
+
+./llama-server -m /home/tunmaker/.cache/huggingface/hub/models--unsloth--Qwen3.5-2B-GGUF/snapshots/f6d5376be1edb4d416d56da11e5397a961aca8ae/Qwen3.5-2B-Q8_0.gguf -ngl 99 -c 32768 --host 0.0.0.0 --port 8080 -v
+
+
+GGML_SYCL_DEVICE=0 ./build/bin/llama-server -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0.00 --chat-template-kwargs '{"enable_thinking":true}'
+GGML_SYCL_DEVICE=0 ./build/bin/llama-server -hf unsloth/gemma-4-E4B-it-GGUF:Q8_0 --temp 1.0 --top-p 0.95 --top-k 64
+
+GGML_SYCL_DEVICE=0 ./build/bin/llama-server -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.00 --chat-template-kwargs '{"enable_thinking":false}'
+
+0988accf824e817d0e3db55c05f5f2954fbfe505
