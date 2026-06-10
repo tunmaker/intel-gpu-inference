@@ -166,20 +166,34 @@ echo ""
 #    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
 #bge-m3 optimized for concurrent embedding
+#exec "$SERVER_BIN" \
+#    --model "$MODEL_PATH" \
+#    --alias bge-m3 \
+#    --host "$HOST" --port "$PORT" \
+#    --ctx-size 20480 \
+#    -b 4096 -ub 4096\
+#    --n-gpu-layers 99 \
+#    --split-mode none --main-gpu 0 \
+#    --embedding \
+#    --pooling cls \
+#    --parallel 6 \
+#    --threads 4 --threads-batch 16 \
+#    --cache-ram 0 \
+#    --mlock \
+#    --no-warmup \
+#    --rope-scaling none \
+#    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
 exec "$SERVER_BIN" \
-    --model "$MODEL_PATH" \
-    --alias bge-m3 \
-    --host "$HOST" --port "$PORT" \
-    --ctx-size 20480 \
-    -b 4096 -ub 4096\
-    --n-gpu-layers 99 \
-    --split-mode none --main-gpu 0 \
-    --embedding \
-    --pooling cls \
-    --parallel 6 \
-    --threads 4 --threads-batch 16 \
-    --cache-ram 0 \
-    --mlock \
-    --no-warmup \
-    --rope-scaling none \
-    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+  --model "$MODEL_PATH" \
+  --embedding \
+  --pooling cls \
+  --host 0.0.0.0 --port 8085 \
+  -c 16384 \
+  -b 4096 -ub 4096 \
+  --parallel 4 -np 4 \
+  --split-mode none --main-gpu 0 \
+  -ngl 999 \
+  --threads 4 --threads-batch 8 \
+  --cache-ram 0 \
+  --no-warmup
