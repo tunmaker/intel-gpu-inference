@@ -120,7 +120,7 @@ fi
 
 HOST="${EMBEDDING_HOST:-0.0.0.0}"
 PORT="${EMBEDDING_PORT:-8085}"
-CONTEXT_SIZE="${EMBEDDING_CTX:-8192}"
+CONTEXT_SIZE="${EMBEDDING_CTX:-4096}"
 
 # GPU layers: offload everything to GPU
 GPU_LAYERS="999"
@@ -152,8 +152,8 @@ echo ""
 echo "============================================================"
 echo ""
 
-PARALLEL="${EMBEDDING_PARALLEL:-2}"
-POOLING="${EMBEDDING_POOLING:-last}"
+PARALLEL="${EMBEDDING_PARALLEL:-4}"
+POOLING="${EMBEDDING_POOLING:-cls}"
 CTX_TOTAL=$(( CONTEXT_SIZE * PARALLEL ))
 
 exec "$SERVER_BIN" \

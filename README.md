@@ -175,8 +175,9 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 | `EMBEDDING_MODEL` | *(required)* | Embedding model path (.gguf) |
 | `EMBEDDING_HOST` | `0.0.0.0` | Embedding server bind address |
 | `EMBEDDING_PORT` | `8085` | Embedding server port |
-| `EMBEDDING_POOLING` | `last` | Pooling mode — `last` for Qwen3-Embedding, `cls` for BGE |
-| `EMBEDDING_CTX` | `8192` | Embedding context size |
+| `EMBEDDING_POOLING` | `cls` | Pooling mode — `cls` for BGE, `last` for Qwen3-Embedding, `mean` for E5/GTE |
+| `EMBEDDING_CTX` | `4096` | Per-slot context; total ctx = CTX × PARALLEL |
+| `EMBEDDING_PARALLEL` | `4` | Parallel decode slots |
 | `WHISPER_MODEL` | `~/models/ggml-large-v3.bin` | Whisper model path |
 | `WHISPER_HOST` | `0.0.0.0` | Whisper server bind address |
 | `WHISPER_PORT` | `9090` | Whisper server port |
