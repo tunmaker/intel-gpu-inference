@@ -60,10 +60,10 @@ while [[ $# -gt 0 ]]; do
             echo "  Any other args      Passed directly to llama-server"
             echo ""
             echo "Environment variables:"
-            echo "  EMBEDDING_MODEL     Model path (default: ~/models/nomic-embed-text-v1.5.Q8_0.gguf)"
+            echo "  EMBEDDING_MODEL     Model path (default: from env config)"
             echo "  EMBEDDING_HOST      Bind address (default: 0.0.0.0)"
             echo "  EMBEDDING_PORT      Listen port (default: 8085)"
-            echo "  EMBEDDING_CTX       Context size (default: 8192)"
+            echo "  EMBEDDING_CTX       Per-slot context (default: 4096); total ctx = CTX * PARALLEL"
             echo ""
             echo "Endpoint:"
             echo "  POST http://<host>:<port>/v1/embeddings"
@@ -152,48 +152,22 @@ echo ""
 echo "============================================================"
 echo ""
 
-#exec "$SERVER_BIN" \
-#    --model "$MODEL_PATH" \
-#    --host "$HOST" \
-#    --port "$PORT" \
-#    --ctx-size "$CONTEXT_SIZE" \
-#    --n-gpu-layers $GPU_LAYERS \
-#    --split-mode none \
-#    --main-gpu 0 \
-#    --embedding \
-#    --pooling cls \
-#    -ub 8192 \
-#    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
-
-#bge-m3 optimized for concurrent embedding
-#exec "$SERVER_BIN" \
-#    --model "$MODEL_PATH" \
-#    --alias bge-m3 \
-#    --host "$HOST" --port "$PORT" \
-#    --ctx-size 20480 \
-#    -b 4096 -ub 4096\
-#    --n-gpu-layers 99 \
-#    --split-mode none --main-gpu 0 \
-#    --embedding \
-#    --pooling cls \
-#    --parallel 6 \
-#    --threads 4 --threads-batch 16 \
-#    --cache-ram 0 \
-#    --mlock \
-#    --no-warmup \
-#    --rope-scaling none \
-#    "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+PARALLEL="${EMBEDDING_PARALLEL:-2}"
+POOLING="${EMBEDDING_POOLING:-last}"
+CTX_TOTAL=$(( CONTEXT_SIZE * PARALLEL ))
 
 exec "$SERVER_BIN" \
   --model "$MODEL_PATH" \
   --embedding \
-  --pooling cls \
-  --host 0.0.0.0 --port 8085 \
-  -c 16384 \
-  -b 4096 -ub 4096 \
-  --parallel 4 -np 4 \
+  --pooling "$POOLING" \
+  --host "$HOST" --port "$PORT" \
+  -c "$CTX_TOTAL" \
+  -b "$CONTEXT_SIZE" -ub "$CONTEXT_SIZE" \
+  --parallel "$PARALLEL" -np "$PARALLEL" \
   --split-mode none --main-gpu 0 \
-  -ngl 999 \
+  -ngl "$GPU_LAYERS" \
   --threads 4 --threads-batch 8 \
   --cache-ram 0 \
-  --no-warmup
+  --log-disable \
+  --no-warmup \
+  "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"

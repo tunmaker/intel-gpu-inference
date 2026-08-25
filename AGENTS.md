@@ -400,7 +400,9 @@ def main():
 | `EMBEDDING_MODEL` | Embedding model path | *(required)* |
 | `EMBEDDING_HOST` | Embedding server bind address | `0.0.0.0` |
 | `EMBEDDING_PORT` | Embedding server port | `8085` |
-| `EMBEDDING_CTX` | Embedding context size | `8192` |
+| `EMBEDDING_CTX` | Embedding per-slot context | `8192` |
+| `EMBEDDING_POOLING` | Pooling mode (`last` for Qwen3-Embedding, `cls` for BGE) | `last` |
+| `EMBEDDING_PARALLEL` | Parallel decode slots | `2` |
 | `WHISPER_MODEL` | Whisper model path | `~/models/ggml-large-v3.bin` |
 | `WHISPER_HOST` | Whisper server bind address | `0.0.0.0` |
 | `WHISPER_PORT` | Whisper server port | `9090` |

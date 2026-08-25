@@ -46,6 +46,13 @@ else
     echo "[intel-gpu-inference] llama-server already built (use --update to rebuild)"
 fi
 
+# 2b. Secret-scanning pre-commit hook
+if [ -d "$INSTALL_DIR/.git" ] && [ -f "$INSTALL_DIR/.githooks/pre-commit" ]; then
+    chmod +x "$INSTALL_DIR/.githooks/pre-commit"
+    git -C "$INSTALL_DIR" config core.hooksPath .githooks
+    echo "[intel-gpu-inference] pre-commit secret scan enabled"
+fi
+
 # 3. XDG config
 mkdir -p "$HOME/.config/intel-gpu-inference"
 if [ ! -f "$HOME/.config/intel-gpu-inference/env" ]; then

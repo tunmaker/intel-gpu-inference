@@ -130,7 +130,7 @@ install_service() {
 
     mkdir -p "$HOME/.config/systemd/user"
 
-    for unit in embedding-server embedding-server-2; do
+    for unit in embedding-server; do
         local template="$PROJECT_DIR/${unit}.service.template"
         if [[ ! -f "$template" ]]; then
             log_error "Service template not found: $template"
@@ -144,10 +144,10 @@ install_service() {
     done
 
     systemctl --user daemon-reload
-    systemctl --user enable embedding-server.service embedding-server-2.service
-    systemctl --user restart embedding-server.service embedding-server-2.service
+    systemctl --user enable embedding-server.service
+    systemctl --user restart embedding-server.service
 
-    log_ok "embedding-server + embedding-server-2 services installed and started"
+    log_ok "embedding-server service installed and started"
 }
 
 # ============================================================================
@@ -175,15 +175,11 @@ main() {
     echo ""
     echo "  Endpoints:"
     echo "    POST http://0.0.0.0:8085/v1/embeddings   (embedding-server)"
-    echo "    POST http://0.0.0.0:8086/v1/embeddings   (embedding-server-2)"
     echo ""
     echo "  Model:    set EMBEDDING_MODEL in ~/.config/intel-gpu-inference/env"
     echo ""
     echo "  Management:"
-    echo "    Status:   systemctl --user status embedding-server embedding-server-2"
     echo "    Logs:     journalctl --user -u embedding-server -f"
-    echo "              journalctl --user -u embedding-server-2 -f"
-    echo "    Restart:  systemctl --user restart embedding-server embedding-server-2"
     echo ""
     echo "  Config:     ~/.config/intel-gpu-inference/env"
     echo ""
