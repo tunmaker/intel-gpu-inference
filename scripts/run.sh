@@ -179,6 +179,14 @@ elif [[ -n "${MMPROJ_PATH:-}" ]]; then
     echo "[WARN] MMPROJ_PATH is set but file not found: $MMPROJ_PATH (running without --mmproj)"
 fi
 
+SPEC_ARGS=()
+if [[ -n "${DRAFT_MODEL:-}" && -f "${DRAFT_MODEL}" ]]; then
+    SPEC_ARGS=(--spec-type draft-mtp --spec-draft-model "$DRAFT_MODEL" --spec-draft-n-max "${DRAFT_N_MAX:-4}")
+    echo "  Speculative decoding: MTP drafter $(basename "$DRAFT_MODEL"), n-max ${DRAFT_N_MAX:-4}"
+elif [[ -n "${DRAFT_MODEL:-}" ]]; then
+    echo "[WARN] DRAFT_MODEL is set but file not found: $DRAFT_MODEL (running without speculative decoding)"
+fi
+
 # --- Legacy configs (commented out) ---
 
 # Config A: Ministral 14B — flash attn on, q8_0 KV cache (pre-rebuild)
@@ -236,14 +244,34 @@ fi
 #     --chat-template-kwargs '{"enable_thinking":true}' \
 #     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
-# --- Active config: Qwen3.5-9B Q8_0 — agentic workflow (tool calling, coding, MCP) ---
+# Config D: Qwen3.5-9B Q8_0 — agentic workflow, tool calling (commented out)
 # SYCL flash attention + fused Gated Delta Net enabled (requires llama.cpp build >= 8369)
 # 2 graph splits, 12.55 tok/s generation, vision via mmproj-F16
 # Unsloth recommended agentic profile: temp=0.6, no repeat penalty (preserves JSON formatting)
 # Thinking disabled: faster responses, no <think> block overhead for tool call loops
+# exec "$SERVER_BIN" \
+#     --model "$MODEL_PATH" \
+#     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     --host "$HOST" \
+#     --port "$PORT" \
+#     --ctx-size "$CONTEXT_SIZE" \
+#     --n-gpu-layers $GPU_LAYERS \
+#     --split-mode none \
+#     --main-gpu 0 \
+#     --fit off \
+#     --mmap \
+#     --temp 0.6 \
+#     --top-p 0.95 \
+#     --top-k 20 \
+#     --min-p 0.0 \
+#     --chat-template-kwargs '{"enable_thinking":false}' \
+#     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+# --- Active config: Gemma 4 12B-it Q8_0 — general-purpose agent, orchestrator, vision ---
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+    "${SPEC_ARGS[@]+"${SPEC_ARGS[@]}"}" \
     --host "$HOST" \
     --port "$PORT" \
     --ctx-size "$CONTEXT_SIZE" \
@@ -252,9 +280,9 @@ exec "$SERVER_BIN" \
     --main-gpu 0 \
     --fit off \
     --mmap \
-    --temp 0.6 \
+    --flash-attn on \
+    --temp 1.0 \
     --top-p 0.95 \
-    --top-k 20 \
+    --top-k 64 \
     --min-p 0.0 \
-    --chat-template-kwargs '{"enable_thinking":false}' \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"

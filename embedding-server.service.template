@@ -7,15 +7,18 @@
 
 [Unit]
 Description=llama.cpp SYCL embedding server (Intel Arc A770)
-After=network.target
+After=network.target llama-server.service
 
 [Service]
 Type=simple
 EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
 WorkingDirectory=__INSTALL_DIR__
+ExecStartPre=__INSTALL_DIR__/scripts/wait-for-model-load.sh llama-server.service:8080
 ExecStart=__INSTALL_DIR__/scripts/run-embedding.sh
 Restart=always
 RestartSec=5
+TimeoutStartSec=600
+OOMScoreAdjust=500
 StartLimitIntervalSec=60
 StartLimitBurst=3
 

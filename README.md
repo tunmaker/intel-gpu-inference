@@ -166,8 +166,11 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEFAULT_MODEL` | `~/models/Qwen3VL-8B-Instruct-Q8_0.gguf` | Active model path |
-| `MMPROJ_PATH` | `~/models/mmproj-Qwen3VL-8B-Instruct-F16.gguf` | Vision projector (blank to disable) |
+| `DEFAULT_MODEL` | `~/models/gemma-4-12B-it/gemma-4-12B-it-Q4_0.gguf` | Active model path (QAT 4-bit; Q8_0 needs more host RAM than 16GB allows) |
+| `MMPROJ_PATH` | `~/models/gemma-4-12B-it/mmproj-gemma-4-12B-it-Q8_0.gguf` | Vision projector (blank to disable) |
+| `DEFAULT_CTX` | `131072` | Context window (256K also fits at Q4_0) |
+| `DRAFT_MODEL` | `~/models/gemma-4-12B-it/mtp-gemma-4-12B-it-Q8_0.gguf` | MTP drafter for speculative decoding (blank to disable) |
+| `DRAFT_N_MAX` | `4` | Draft tokens per step |
 | `LLAMA_HOST` | `0.0.0.0` | Server bind address |
 | `LLAMA_PORT` | `8080` | Server port |
 | `DEFAULT_SEARCH_ENGINE` | `duckduckgo` | MCP search engine |
@@ -178,7 +181,8 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 | `EMBEDDING_POOLING` | `cls` | Pooling mode — `cls` for BGE, `last` for Qwen3-Embedding, `mean` for E5/GTE |
 | `EMBEDDING_CTX` | `4096` | Per-slot context; total ctx = CTX × PARALLEL |
 | `EMBEDDING_PARALLEL` | `4` | Parallel decode slots |
-| `WHISPER_MODEL` | `~/models/ggml-large-v3.bin` | Whisper model path |
+| `WHISPER_MODEL` | `~/models/ggml-medium.bin` | Whisper model path (large-v3 exceeds container RAM alongside llama) |
+| `LLAMA_ARG_CACHE_RAM` | `2048` | Host prompt-cache cap in MiB (llama.cpp defaults to 8192 — grows until OOM in a 10GB container) |
 | `WHISPER_HOST` | `0.0.0.0` | Whisper server bind address |
 | `WHISPER_PORT` | `9090` | Whisper server port |
 | `WHISPER_LANGUAGE` | `auto` | Language: auto, en, ar, fr, zh |
