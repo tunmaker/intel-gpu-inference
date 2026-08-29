@@ -8,7 +8,8 @@
 #   ./install.sh --update              # Pull latest submodules + rebuild all
 #   ./install.sh --with-whisper        # Also install whisper speech recognition
 #   ./install.sh --with-embedding      # Also install embedding server
-#   ./install.sh --all                 # Install everything (mcp + whisper + embedding)
+#   ./install.sh --with-piper          # Also install Piper text-to-speech
+#   ./install.sh --all                 # Install everything (mcp + whisper + embedding + piper)
 #   ./install.sh --update --all        # Update + reinstall everything
 
 set -euo pipefail
@@ -18,13 +19,15 @@ INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WITH_MCP=false
 WITH_WHISPER=false
 WITH_EMBEDDING=false
+WITH_PIPER=false
 UPDATE=false
 for arg in "$@"; do
     case "$arg" in
         --with-mcp)       WITH_MCP=true ;;
         --with-whisper)   WITH_WHISPER=true ;;
         --with-embedding) WITH_EMBEDDING=true ;;
-        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true ;;
+        --with-piper)     WITH_PIPER=true ;;
+        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true; WITH_PIPER=true ;;
         --update)         UPDATE=true ;;
     esac
 done
@@ -105,4 +108,15 @@ if [[ "$WITH_EMBEDDING" == "true" ]]; then
     echo ""
     echo "[intel-gpu-inference] Installing llama.cpp embedding server..."
     bash "$INSTALL_DIR/scripts/install-embedding.sh"
+fi
+
+# 9. (Optional) Piper text-to-speech server
+if [[ "$WITH_PIPER" == "true" ]]; then
+    echo ""
+    echo "[intel-gpu-inference] Installing Piper text-to-speech server..."
+    if [[ "$UPDATE" == "true" ]]; then
+        bash "$INSTALL_DIR/scripts/install-piper.sh" --update
+    else
+        bash "$INSTALL_DIR/scripts/install-piper.sh"
+    fi
 fi

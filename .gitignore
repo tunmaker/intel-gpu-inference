@@ -8,11 +8,17 @@ llama.cpp/build/
 open-websearch/node_modules/
 open-websearch/build/
 
+# Piper venv (recreated by scripts/install-piper.sh)
+piper-venv/
+
 # Whisper build artifacts
 whisper.cpp/build/
 *.o
 *.a
 *.so
+
+# Audio dropped into the repo dir by whisper-server at runtime
+*.wav
 
 # Environment / secrets
 .env

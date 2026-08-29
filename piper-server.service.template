@@ -1,0 +1,44 @@
+# Template — placeholders are substituted by intel-gpu-inference/install.sh:
+#   __INSTALL_DIR__  → absolute path to the intel-gpu-inference directory
+#   __HOME__         → user's home directory
+#
+# Do not edit the installed unit directly (~/.config/systemd/user/piper-server.service).
+# Edit this file and re-run: intel-gpu-inference/install.sh --with-piper
+
+[Unit]
+Description=Piper neural text-to-speech server (CPU)
+After=network.target llama-server.service embedding-server.service
+
+[Service]
+Type=simple
+EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
+WorkingDirectory=__INSTALL_DIR__
+ExecStartPre=__INSTALL_DIR__/scripts/wait-for-model-load.sh llama-server.service:8080 embedding-server.service:8085
+ExecStart=__INSTALL_DIR__/scripts/run-piper.sh
+Restart=always
+RestartSec=5
+TimeoutStartSec=120
+
+# Measured on the deployment host: 164MB with one voice, 805MB steady with all
+# three loaded, 1038MB peak under a 9-way concurrent burst. MemoryHigh throttles
+# via reclaim before MemoryMax kills, so a leak is capped without a burst being fatal.
+MemoryHigh=1G
+MemoryMax=1536M
+
+# Bounds a synthesis burst so it cannot starve llama-server. Raising this to 400%
+# only improves long-form Arabic (RTF 0.058 -> 0.040) and moves a short request by
+# ~7ms, which is not worth taking cores from llama.cpp.
+CPUQuota=200%
+
+# Sacrifice order under memory pressure:
+#   llama-server 0 (Gemma 12B, must not be disturbed)
+#   embedding-server 500 < piper-server 700 < whisper-server 900
+# Piper sits above embedding because it reloads in ~2s and holds no shared
+# state, and below whisper, which is the designated first victim.
+OOMScoreAdjust=700
+
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

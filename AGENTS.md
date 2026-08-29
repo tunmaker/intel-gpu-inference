@@ -4,7 +4,7 @@ This project provides an Intel Arc GPU inference stack using llama.cpp with SYCL
 
 ## Project Overview
 
-- **Main purpose**: Local AI inference stack on Intel Arc A770 16GB (LLM, embeddings, speech-to-text, web search)
+- **Main purpose**: Local AI inference stack on Intel Arc A770 16GB (LLM, embeddings, speech-to-text, text-to-speech, web search)
 - **Language**: Shell scripts (Bash), Python (benchmarking), C++ (llama.cpp, whisper.cpp)
 - **Submodules**: `llama.cpp/`, `whisper.cpp/`, `open-websearch/`
 
@@ -89,6 +89,64 @@ curl http://<host>:9090/inference \
 - `language` — ISO 639-1 code or `auto` (default: `auto`)
 - `translate` — `true` to translate to English
 
+### piper-server — Text-to-Speech (port 9091)
+
+Neural TTS from [OHF-Voice/piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), CPU-only
+(onnxruntime). Takes JSON, returns WAV bytes. Three voices are installed and all are
+selectable per request without restarting the server, so a caller can pick a voice from
+the script of the reply text.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | POST | Synthesize speech (JSON in, `audio/wav` out) |
+| `/synthesize` | POST | Upstream name for the same handler |
+| `/voices` | GET | Installed voices with their full configs |
+| `/info` | GET | Default voice + timing of the last synthesis |
+| `/` | GET | Browser test page |
+
+```bash
+# Synthesize Arabic (default voice) and save the WAV
+curl http://<host>:9091/ \
+  -H "Content-Type: application/json" \
+  -d '{"text":"مرحبا، كيف حالك اليوم؟"}' \
+  -o speech.wav
+
+# Pick a voice explicitly, and speak 25% faster
+curl http://<host>:9091/ \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Bonjour, comment allez-vous?","voice":"fr_FR-siwis-medium","length_scale":0.8}' \
+  -o speech.wav
+
+# List installed voices
+curl http://<host>:9091/voices
+```
+
+**Request fields** (JSON):
+- `text` — text to speak (required)
+- `voice` — voice name, e.g. `ar_JO-kareem-medium` (optional, defaults to `PIPER_VOICE`)
+- `length_scale` — speaking rate; below 1.0 is faster (optional)
+- `noise_scale`, `noise_w_scale` — generator noise (optional)
+- `speaker` / `speaker_id` — for multi-speaker voices (optional; none of the three are)
+
+**Response**: WAV bytes, 16-bit mono at the voice's native sample rate (22050 Hz for all
+three installed voices). An unknown `voice` falls back to the default rather than erroring.
+
+**Installed voices**:
+
+| Voice | Language | Measured RTF |
+|-------|----------|--------------|
+| `ar_JO-kareem-medium` | Arabic (Jordan) | 0.058 |
+| `fr_FR-siwis-medium` | French | 0.039 |
+| `en_US-lessac-medium` | English (US) | 0.040 |
+
+RTF is synthesis wall time over audio duration, so 0.058 is ~17x faster than real time.
+Measured warm (median of 6) on the deployment host under the service's 200% CPU quota.
+Arabic runs an extra tashkeel diacritization pass, which is why it costs more than the
+other two; the model ships inside the wheel and needs no extra setup.
+
+The first request for a voice also pays a one-off ~1s load, since voices other than
+`PIPER_VOICE` are loaded lazily on first use.
+
 ### open-websearch — MCP Web Search (port 3000)
 
 Multi-engine web search via MCP protocol. No API keys required. Usable by MCP-compatible clients.
@@ -142,6 +200,7 @@ curl http://<host>:3000/mcp \
 | llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
 | embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
 | whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
+| piper-server | 9091 | HTTP (JSON → WAV) | `systemctl --user status piper-server` |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
 
 All services bind to `0.0.0.0` by default and are accessible on the local network.
