@@ -65,9 +65,23 @@ curl http://<host>:8085/v1/embeddings \
   -d '{"input": ["text one", "text two"], "model": "embedding"}'
 ```
 
-### whisper-server — Speech Recognition (port 9090)
+### whisper-server — Speech Recognition (port 9090) — RETIRED
 
-Multilingual speech-to-text. Accepts audio files (WAV, MP3, FLAC, OGG, etc.) via multipart form upload. Supports Arabic, English, French, Chinese, and 90+ languages.
+**This service is disabled and masked. Nothing listens on 9090.** Speech-to-text is
+served entirely by `vosk-server` on 9092, which is wire-compatible (see below).
+
+Retired because the only consumers speak Tunisian Derja, where Vosk is both more
+accurate and 2.1x faster on CPU than whisper is on the GPU — so whisper was holding
+VRAM and standing as the designated OOM victim for no benefit.
+
+**Trade-off, stated plainly:** whisper handled 90+ languages; Vosk's `ar-tn` model
+does not. Non-Derja audio is out of scope until another model is installed.
+
+To bring it back: `systemctl --user unmask whisper-server`, restore the unit from
+`~/.config/systemd/user/whisper-server.service.retired`, then `daemon-reload` and
+`enable --now`. The install path (`./install.sh --with-whisper`) still works.
+
+The historical API, for reference:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -247,7 +261,7 @@ curl http://<host>:3000/mcp \
 |---------|------|----------|--------|
 | llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
 | embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
-| whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
+| ~~whisper-server~~ | ~~9090~~ | — | **Retired** — disabled and masked; use vosk-server |
 | piper-server | 9091 | HTTP (JSON → WAV) | `systemctl --user status piper-server` |
 | vosk-server | 9092 | HTTP (multipart) | `systemctl --user status vosk-server` |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |

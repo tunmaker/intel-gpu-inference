@@ -30,10 +30,12 @@ MemoryMax=__VOSK_MEM_MAX__
 CPUQuota=200%
 
 # Sacrifice order under memory pressure:
-#   llama-server 0 (Gemma 12B, must not be disturbed)
-#   embedding-server 500 < piper-server 700 < vosk-server 800 < whisper-server 900
-# Vosk sits below whisper (the designated first victim) but above piper, since a
-# reload costs a model load rather than the ~2s piper needs.
+#   llama-server 0 (the active model, must not be disturbed)
+#   embedding-server 500 < piper-server 700 < vosk-server 800
+# With whisper-server retired, vosk is the highest score and therefore the first
+# service the kernel kills — deliberate: it is the only one that can be lost
+# without taking chat, embeddings or speech output down with it. A reload costs a
+# model load rather than the ~2s piper needs, which is why it sits above piper.
 OOMScoreAdjust=800
 
 StartLimitIntervalSec=60

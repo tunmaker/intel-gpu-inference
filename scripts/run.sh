@@ -244,14 +244,13 @@ fi
 #     --chat-template-kwargs '{"enable_thinking":true}' \
 #     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
-# Config D: Qwen3.5-9B Q8_0 — agentic workflow, tool calling (commented out)
-# SYCL flash attention + fused Gated Delta Net enabled (requires llama.cpp build >= 8369)
-# 2 graph splits, 12.55 tok/s generation, vision via mmproj-F16
-# Unsloth recommended agentic profile: temp=0.6, no repeat penalty (preserves JSON formatting)
-# Thinking disabled: faster responses, no <think> block overhead for tool call loops
+
+# Config E: Gemma 4 12B-it Q4_0 — general-purpose agent, orchestrator, vision (commented out)
+# Needs MTP drafter + mmproj from the gemma-4-12B-it directory; see the env file.
 # exec "$SERVER_BIN" \
 #     --model "$MODEL_PATH" \
 #     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     "${SPEC_ARGS[@]+"${SPEC_ARGS[@]}"}" \
 #     --host "$HOST" \
 #     --port "$PORT" \
 #     --ctx-size "$CONTEXT_SIZE" \
@@ -260,14 +259,19 @@ fi
 #     --main-gpu 0 \
 #     --fit off \
 #     --mmap \
-#     --temp 0.6 \
+#     --flash-attn on \
+#     --temp 1.0 \
 #     --top-p 0.95 \
-#     --top-k 20 \
+#     --top-k 64 \
 #     --min-p 0.0 \
-#     --chat-template-kwargs '{"enable_thinking":false}' \
 #     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
-# --- Active config: Gemma 4 12B-it Q8_0 — general-purpose agent, orchestrator, vision ---
+# --- Active config: Qwen3.5-9B Q8_0 — agentic assistant, tool calling, vision ---
+# SYCL flash attention + fused Gated Delta Net (requires llama.cpp build >= 8369).
+# Hybrid SSM+attention: only 8/32 layers hold KV cache, so 131K context fits in 16GB
+# alongside the F16 vision projector.
+# Unsloth agentic profile: temp=0.6, no repeat penalty (repeat penalty mangles tool JSON).
+# Thinking disabled — no <think> block on every turn, which is latency the voice path pays for.
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
@@ -279,10 +283,11 @@ exec "$SERVER_BIN" \
     --split-mode none \
     --main-gpu 0 \
     --fit off \
-    --mmap \
+    --load-mode mmap \
     --flash-attn on \
-    --temp 1.0 \
+    --temp 0.6 \
     --top-p 0.95 \
-    --top-k 64 \
+    --top-k 20 \
     --min-p 0.0 \
+    --reasoning off \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"

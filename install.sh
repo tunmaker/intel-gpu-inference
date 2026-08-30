@@ -6,11 +6,11 @@
 #   ./install.sh                    # Install llama-server service
 #   ./install.sh --with-mcp         # Also install MCP web search server
 #   ./install.sh --update              # Pull latest submodules + rebuild all
-#   ./install.sh --with-whisper        # Also install whisper speech recognition
+#   ./install.sh --with-whisper        # Also install whisper STT (retired; not in --all)
 #   ./install.sh --with-embedding      # Also install embedding server
 #   ./install.sh --with-piper          # Also install Piper text-to-speech
 #   ./install.sh --with-vosk           # Also install Vosk STT (Tunisian Derja)
-#   ./install.sh --all                 # Install everything (mcp + whisper + embedding + piper + vosk)
+#   ./install.sh --all                 # Install everything (mcp + embedding + piper + vosk)
 #   ./install.sh --update --all        # Update + reinstall everything
 
 set -euo pipefail
@@ -30,7 +30,9 @@ for arg in "$@"; do
         --with-embedding) WITH_EMBEDDING=true ;;
         --with-piper)     WITH_PIPER=true ;;
         --with-vosk)      WITH_VOSK=true ;;
-        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true; WITH_PIPER=true; WITH_VOSK=true ;;
+        # whisper is deliberately NOT in --all: retired in favour of vosk (9092).
+        # Install it explicitly with --with-whisper if you need non-Derja languages.
+        --all)            WITH_MCP=true; WITH_EMBEDDING=true; WITH_PIPER=true; WITH_VOSK=true ;;
         --update)         UPDATE=true ;;
     esac
 done

@@ -6,7 +6,7 @@ Local LLM inference on **Intel Arc A770 16GB** using **llama.cpp with SYCL backe
 - Native tool/function calling for agentic workflows
 - Dedicated embedding server (optional, separate llama.cpp instance)
 - MCP web search server (optional, no API keys)
-- Speech-to-text via whisper.cpp (optional, multilingual)
+- Speech-to-text via Vosk (Tunisian Derja); whisper.cpp retired, opt-in only
 - SYCL flash attention + fused Gated Delta Net for Qwen3.5
 - Runs as systemd user services with auto-restart
 - Persistent services survive logout (with lingering enabled)
@@ -138,7 +138,7 @@ journalctl --user -u embedding-server -f
 **Test**: `./scripts/test-embedding.sh`
 **Model**: set `EMBEDDING_MODEL` in `~/.config/intel-gpu-inference/env`
 
-### whisper-server — Speech Recognition (Optional)
+### whisper-server — Speech Recognition (RETIRED — disabled and masked)
 
 Multilingual speech-to-text via [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with SYCL GPU acceleration. Supports Arabic, English, French, Chinese, and 90+ languages.
 
@@ -166,10 +166,10 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEFAULT_MODEL` | `~/models/gemma-4-12B-it/gemma-4-12B-it-Q4_0.gguf` | Active model path (QAT 4-bit; Q8_0 needs more host RAM than 16GB allows) |
-| `MMPROJ_PATH` | `~/models/gemma-4-12B-it/mmproj-gemma-4-12B-it-Q8_0.gguf` | Vision projector (blank to disable) |
+| `DEFAULT_MODEL` | `~/models/Qwen3.5_9B-Q8_0/Qwen3.5-9B-Q8_0.gguf` | Active model path |
+| `MMPROJ_PATH` | `~/models/Qwen3.5_9B-Q8_0/mmproj-F16.gguf` | Vision projector (blank to disable) |
 | `DEFAULT_CTX` | `131072` | Context window (256K also fits at Q4_0) |
-| `DRAFT_MODEL` | `~/models/gemma-4-12B-it/mtp-gemma-4-12B-it-Q8_0.gguf` | MTP drafter for speculative decoding (blank to disable) |
+| `DRAFT_MODEL` | *(blank)* | MTP drafter for speculative decoding. Gemma-only; Qwen3.5 has no MTP head, so leave blank |
 | `DRAFT_N_MAX` | `4` | Draft tokens per step |
 | `LLAMA_HOST` | `0.0.0.0` | Server bind address |
 | `LLAMA_PORT` | `8080` | Server port |
