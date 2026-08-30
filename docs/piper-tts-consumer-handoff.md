@@ -10,6 +10,10 @@ Replace `<piper-host>` throughout with the LAN address of the box running the in
 stack — the same host you already call for whisper on port 9090. Ask whoever handed you
 this doc for the address, or pin it in your config rather than hardcoding it in a helper.
 
+> Speech-to-text is covered separately in
+> [derja-stt-consumer-handoff.md](derja-stt-consumer-handoff.md) — Tunisian Derja now
+> routes to a different port than the rest.
+
 ---
 
 ## The call

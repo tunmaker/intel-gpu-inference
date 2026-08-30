@@ -9,7 +9,8 @@
 #   ./install.sh --with-whisper        # Also install whisper speech recognition
 #   ./install.sh --with-embedding      # Also install embedding server
 #   ./install.sh --with-piper          # Also install Piper text-to-speech
-#   ./install.sh --all                 # Install everything (mcp + whisper + embedding + piper)
+#   ./install.sh --with-vosk           # Also install Vosk STT (Tunisian Derja)
+#   ./install.sh --all                 # Install everything (mcp + whisper + embedding + piper + vosk)
 #   ./install.sh --update --all        # Update + reinstall everything
 
 set -euo pipefail
@@ -20,6 +21,7 @@ WITH_MCP=false
 WITH_WHISPER=false
 WITH_EMBEDDING=false
 WITH_PIPER=false
+WITH_VOSK=false
 UPDATE=false
 for arg in "$@"; do
     case "$arg" in
@@ -27,7 +29,8 @@ for arg in "$@"; do
         --with-whisper)   WITH_WHISPER=true ;;
         --with-embedding) WITH_EMBEDDING=true ;;
         --with-piper)     WITH_PIPER=true ;;
-        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true; WITH_PIPER=true ;;
+        --with-vosk)      WITH_VOSK=true ;;
+        --all)            WITH_MCP=true; WITH_WHISPER=true; WITH_EMBEDDING=true; WITH_PIPER=true; WITH_VOSK=true ;;
         --update)         UPDATE=true ;;
     esac
 done
@@ -118,5 +121,16 @@ if [[ "$WITH_PIPER" == "true" ]]; then
         bash "$INSTALL_DIR/scripts/install-piper.sh" --update
     else
         bash "$INSTALL_DIR/scripts/install-piper.sh"
+    fi
+fi
+
+# 10. (Optional) Vosk speech-to-text server (Tunisian Derja)
+if [[ "$WITH_VOSK" == "true" ]]; then
+    echo ""
+    echo "[intel-gpu-inference] Installing Vosk speech recognition server..."
+    if [[ "$UPDATE" == "true" ]]; then
+        bash "$INSTALL_DIR/scripts/install-vosk.sh" --update
+    else
+        bash "$INSTALL_DIR/scripts/install-vosk.sh"
     fi
 fi

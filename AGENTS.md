@@ -147,6 +147,54 @@ other two; the model ships inside the wheel and needs no extra setup.
 The first request for a voice also pays a one-off ~1s load, since voices other than
 `PIPER_VOICE` are loaded lazily on first use.
 
+### vosk-server — Tunisian Derja Speech Recognition (port 9092)
+
+Kaldi/Vosk speech-to-text specialised for **Tunisian Derja** (`vosk-model-ar-tn-0.1-linto`,
+Apache 2.0, trained on TARIC). CPU-only: Vosk is an nnet3 acoustic model plus a WFST beam
+search, and Kaldi's only GPU decoders are CUDA, so there is no Arc path.
+
+**It is wire-compatible with `whisper-server`** — the same multipart POST works against
+both, so a caller switches engine by changing the port and nothing else.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/inference` | POST | Transcribe audio (multipart/form-data) |
+| `/health` | GET | Liveness + loaded model name |
+| `/` | GET | Service info as JSON |
+
+```bash
+# Identical to the whisper-server call, only the port differs
+curl http://<host>:9092/inference \
+  -F "file=@audio.wav" \
+  -F "response_format=json" \
+  -F "language=ar"
+
+# Response: {"text": "شن احوالك اليوم"}
+```
+
+**Parameters** (form fields):
+- `file` — audio file (required)
+- `language`, `response_format`, `prompt`, `translate`, `temperature` — **accepted and
+  ignored**, so a whisper client needs no changes. Vosk always returns plain JSON text.
+
+Input should be 16kHz mono s16le WAV. Anything else (other rates, stereo, mp3) is
+converted with ffmpeg automatically rather than rejected.
+
+**Every response carries a `text` key, including errors** — `{"text": "", "error": "..."}`
+with a 4xx/5xx status. The server never returns HTML, so `r.json()["text"]` is always safe.
+
+**Measured** on the deployment host (CPU, 200% quota), median of 2 warm runs:
+
+| Clip | Vosk RTF | whisper-server RTF |
+|---|---|---|
+| 5.0s Derja | **0.071** | 0.200 |
+| 9.8s Derja | 0.069 | 0.155 |
+| 1.6s Derja | 0.081 | 0.419 |
+
+Resident memory is 1464MB steady, 1482MB peak while decoding; the cgroup charges ~2.4GB
+once page cache for the 1.4GB of model files is counted, which is what `MemoryMax` is
+sized against.
+
 ### open-websearch — MCP Web Search (port 3000)
 
 Multi-engine web search via MCP protocol. No API keys required. Usable by MCP-compatible clients.
@@ -201,6 +249,7 @@ curl http://<host>:3000/mcp \
 | embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
 | whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
 | piper-server | 9091 | HTTP (JSON → WAV) | `systemctl --user status piper-server` |
+| vosk-server | 9092 | HTTP (multipart) | `systemctl --user status vosk-server` |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
 
 All services bind to `0.0.0.0` by default and are accessible on the local network.
