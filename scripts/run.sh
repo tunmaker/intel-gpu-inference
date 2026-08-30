@@ -266,6 +266,15 @@ fi
 #     --min-p 0.0 \
 #     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
 
+# Prompt cache, measured on this host (30 Aug 2026), 5.9k-token prompt:
+#   identical prompt ............ 0.09 s prefill, 100% cached
+#   tail changed (MEMORY.md) .... 1.20 s prefill,  91% cached
+#   anything changed earlier .... 9.09 s prefill,   0% cached
+# Exact-prefix reuse is the whole mechanism. --cache-reuse (KV shifting) measured
+# NO effect here: a mid-prompt change still re-prefills from zero, because Qwen3.5
+# is hybrid SSM+attention and DeltaNet recurrent state does not shift like KV.
+# The flag is kept because it is correct for attention-only models — re-measure if
+# the active model changes. Do not budget on it for Qwen.
 # --- Active config: Qwen3.5-9B Q8_0 — agentic assistant, tool calling, vision ---
 # SYCL flash attention + fused Gated Delta Net (requires llama.cpp build >= 8369).
 # Hybrid SSM+attention: only 8/32 layers hold KV cache, so 131K context fits in 16GB
@@ -285,6 +294,7 @@ exec "$SERVER_BIN" \
     --fit off \
     --load-mode mmap \
     --flash-attn on \
+    --cache-reuse 256 \
     --temp 0.6 \
     --top-p 0.95 \
     --top-k 20 \
