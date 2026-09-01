@@ -41,7 +41,9 @@ fi
 
 MODEL="${SMOLVLM_MODEL:-$HOME/models/smolvlm/SmolVLM-256M-Instruct-Q8_0.gguf}"
 MMPROJ="${SMOLVLM_MMPROJ:-$HOME/models/smolvlm/mmproj-SmolVLM-256M-Instruct-Q8_0.gguf}"
-HOST="${SMOLVLM_HOST:-127.0.0.1}"
+# The orchestrator runs on another host on the LAN, like every other consumer
+# of this box. Same posture as llama-server and the Vosk endpoint.
+HOST="${SMOLVLM_HOST:-0.0.0.0}"
 PORT="${SMOLVLM_PORT:-8091}"
 THREADS="${SMOLVLM_THREADS:-4}"
 CTX="${SMOLVLM_CTX:-4096}"
