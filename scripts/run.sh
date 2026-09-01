@@ -270,11 +270,25 @@ fi
 #   identical prompt ............ 0.09 s prefill, 100% cached
 #   tail changed (MEMORY.md) .... 1.20 s prefill,  91% cached
 #   anything changed earlier .... 9.09 s prefill,   0% cached
-# Exact-prefix reuse is the whole mechanism. --cache-reuse (KV shifting) measured
-# NO effect here: a mid-prompt change still re-prefills from zero, because Qwen3.5
-# is hybrid SSM+attention and DeltaNet recurrent state does not shift like KV.
-# The flag is kept because it is correct for attention-only models — re-measure if
-# the active model changes. Do not budget on it for Qwen.
+# Slots, measured 1 Sep 2026. Left on its own, -np resolves to "auto", which also
+# turns on --kv-unified: one shared KV buffer, and idle slots are CLEARED whenever
+# a new task arrives. Two callers pinned to different slots therefore still destroy
+# each other's prefix:
+#   prime slot 0 ......................... cache_n=1815, prefill  93 ms
+#   three unrelated prompts on slot 1 .... (slot 0 now cleared)
+#   slot 0, byte-identical prompt ........ cache_n=   0, prefill 3152 ms
+# --no-kv-unified gives each sequence its own KV allocation, so a slot keeps its
+# prefix while other slots work. --ctx-size is the TOTAL and is divided by
+# --parallel, so 131072/4 = 32768 per slot: far more than the ~6-10k we use, and
+# the same total VRAM as unified. Pin callers with "id_slot" in the request body.
+#
+# Exact-prefix reuse is the whole mechanism. --cache-reuse below does nothing at
+# all, and the server says so on every start:
+#   srv load_model: cache_reuse is not supported by multimodal, it will be disabled
+# Loading --mmproj switches it off outright, so the earlier note blaming the hybrid
+# SSM architecture was measuring a flag that was never active. Both may well be
+# true, but the mmproj disable happens first and unconditionally. The flag is kept
+# for the day this runs without a projector; until then, do not budget on it.
 # --- Active config: Qwen3.5-9B Q8_0 — agentic assistant, tool calling, vision ---
 # SYCL flash attention + fused Gated Delta Net (requires llama.cpp build >= 8369).
 # Hybrid SSM+attention: only 8/32 layers hold KV cache, so 131K context fits in 16GB
@@ -294,6 +308,8 @@ exec "$SERVER_BIN" \
     --fit off \
     --load-mode mmap \
     --flash-attn on \
+    --parallel 4 \
+    --no-kv-unified \
     --cache-reuse 256 \
     --temp 0.6 \
     --top-p 0.95 \
