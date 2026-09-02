@@ -278,9 +278,14 @@ fi
 #   three unrelated prompts on slot 1 .... (slot 0 now cleared)
 #   slot 0, byte-identical prompt ........ cache_n=   0, prefill 3152 ms
 # --no-kv-unified gives each sequence its own KV allocation, so a slot keeps its
-# prefix while other slots work. --ctx-size is the TOTAL and is divided by
-# --parallel, so 131072/4 = 32768 per slot: far more than the ~6-10k we use, and
-# the same total VRAM as unified. Pin callers with "id_slot" in the request body.
+# prefix while other slots work. --ctx-size is the TOTAL and is divided equally by
+# --parallel; there is no per-slot sizing. Two slots, 131072/2 = 65536 each:
+# slot 0 is the voice session alone (its warm prefix is the wake-word latency),
+# slot 1 is everything else -- main UI, subagents, cron turns, image probes.
+# Four 32k slots looked generous until a research subagent piled nine web
+# searches into one prompt; OpenClaw budgets (contextTokens) are set per lane so
+# voice compacts early and the shared lane can actually use the room.
+# Pin callers with "id_slot" in the request body.
 #
 # Exact-prefix reuse is the whole mechanism. --cache-reuse below does nothing at
 # all, and the server says so on every start:
@@ -308,7 +313,7 @@ exec "$SERVER_BIN" \
     --fit off \
     --load-mode mmap \
     --flash-attn on \
-    --parallel 4 \
+    --parallel 2 \
     --no-kv-unified \
     --cache-reuse 256 \
     --temp 0.6 \
