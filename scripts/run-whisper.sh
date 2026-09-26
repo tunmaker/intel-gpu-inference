@@ -48,10 +48,12 @@ while [[ $# -gt 0 ]]; do
             echo "  Any other args      Passed directly to whisper-server"
             echo ""
             echo "Environment variables:"
-            echo "  WHISPER_MODEL       Model path (default: ~/models/ggml-large-v3.bin)"
+            echo "  WHISPER_MODEL       Model path (e.g. ~/models/ggml-large-v3-turbo-q5_0.bin)"
             echo "  WHISPER_HOST        Bind address (default: 0.0.0.0)"
             echo "  WHISPER_PORT        Listen port (default: 9090)"
-            echo "  WHISPER_LANGUAGE    Language: auto, en, ar, fr, zh (default: auto)"
+            echo "  WHISPER_LANGUAGE    Language: auto, en, fr, ... (default: auto)"
+            echo "  WHISPER_DEVICE      SYCL device (default: level_zero:0, the A770)"
+            echo "  WHISPER_THREADS     CPU threads for the non-GPU parts (default: 4)"
             echo ""
             echo "Endpoint:"
             echo "  POST http://<host>:<port>/inference"
@@ -107,6 +109,8 @@ fi
 HOST="${WHISPER_HOST:-0.0.0.0}"
 PORT="${WHISPER_PORT:-9090}"
 LANGUAGE="${WHISPER_LANGUAGE:-auto}"
+THREADS="${WHISPER_THREADS:-4}"
+export ONEAPI_DEVICE_SELECTOR="${WHISPER_DEVICE:-level_zero:0}"
 
 # SYCL runtime environment
 export ZES_ENABLE_SYSMAN="${ZES_ENABLE_SYSMAN:-1}"
@@ -125,7 +129,7 @@ echo "  Model:     $(basename "$MODEL_PATH")"
 echo "  Language:   $LANGUAGE"
 echo "  Endpoint:  http://${HOST}:${PORT}/inference"
 echo ""
-echo "  SYCL:      GPU-accelerated inference"
+echo "  SYCL:      ${ONEAPI_DEVICE_SELECTOR}, flash attention"
 echo "  Env:       ZES_ENABLE_SYSMAN=${ZES_ENABLE_SYSMAN}"
 echo "             UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS}"
 echo ""
@@ -139,5 +143,7 @@ exec "$SERVER_BIN" \
     --host "$HOST" \
     --port "$PORT" \
     --language "$LANGUAGE" \
+    --threads "$THREADS" \
+    --flash-attn \
     --convert \
     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"

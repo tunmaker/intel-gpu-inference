@@ -6,8 +6,10 @@
 # Edit this file and re-run: intel-gpu-inference/install.sh --with-whisper
 
 [Unit]
-Description=whisper.cpp SYCL speech recognition server (Intel Arc A770)
+Description=whisper.cpp SYCL speech recognition server (English/French, Intel Arc A770)
 After=network.target llama-server.service embedding-server.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -15,12 +17,11 @@ EnvironmentFile=-__HOME__/.config/intel-gpu-inference/env
 WorkingDirectory=__INSTALL_DIR__
 ExecStartPre=__INSTALL_DIR__/scripts/wait-for-model-load.sh llama-server.service:8080 embedding-server.service:8085
 ExecStart=__INSTALL_DIR__/scripts/run-whisper.sh
+ExecStartPost=__INSTALL_DIR__/scripts/warmup-whisper.sh
 Restart=always
 RestartSec=5
 TimeoutStartSec=600
 OOMScoreAdjust=900
-StartLimitIntervalSec=60
-StartLimitBurst=3
 
 [Install]
 WantedBy=default.target

@@ -5,7 +5,7 @@
 # This script:
 #   1. Initializes whisper.cpp submodule and pulls latest
 #   2. Builds whisper.cpp with SYCL backend (Intel Arc GPU)
-#   3. Downloads the whisper large-v3 model
+#   3. Downloads the whisper large-v3-turbo q5_0 model
 #   4. Appends whisper config to the env file
 #   5. Installs and starts a systemd user service
 #
@@ -24,7 +24,7 @@ WHISPER_CPP_DIR="$PROJECT_DIR/whisper.cpp"
 ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 MODELS_DIR="${MODELS_DIR:-$HOME/models}"
 
-DEFAULT_WHISPER_MODEL="ggml-large-v3.bin"
+DEFAULT_WHISPER_MODEL="ggml-large-v3-turbo-q5_0.bin"
 
 # Colors for output
 RED='\033[0;31m'
@@ -199,8 +199,8 @@ download_model() {
     # Use whisper.cpp's built-in download script
     local download_script="$WHISPER_CPP_DIR/models/download-ggml-model.sh"
     if [[ -x "$download_script" ]]; then
-        log_info "Downloading large-v3 model (~3GB)..."
-        bash "$download_script" large-v3
+        log_info "Downloading large-v3-turbo q5_0 model (~550MB)..."
+        bash "$download_script" large-v3-turbo-q5_0
 
         # Move from whisper.cpp/models/ to ~/models/
         if [[ -f "$WHISPER_CPP_DIR/models/$DEFAULT_WHISPER_MODEL" ]]; then
@@ -208,13 +208,13 @@ download_model() {
             log_ok "Model installed: $model_path"
         else
             log_error "Download script did not produce expected file."
-            log_error "Try manually: bash $download_script large-v3"
+            log_error "Try manually: bash $download_script large-v3-turbo-q5_0"
             exit 1
         fi
     else
         # Fallback: direct download from Hugging Face
         local model_url="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$DEFAULT_WHISPER_MODEL"
-        log_info "Downloading large-v3 model from Hugging Face (~3GB)..."
+        log_info "Downloading large-v3-turbo q5_0 from Hugging Face (~550MB)..."
         if command -v wget &>/dev/null; then
             wget -O "$model_path" "$model_url"
         elif command -v curl &>/dev/null; then

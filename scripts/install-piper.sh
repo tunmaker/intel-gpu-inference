@@ -29,11 +29,10 @@ ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 MODELS_DIR="${MODELS_DIR:-$HOME/models}"
 VOICES_DIR="${PIPER_VOICES_DIR:-$MODELS_DIR/piper}"
 
-DEFAULT_PIPER_VOICE="ar_JO-kareem-medium"
+DEFAULT_PIPER_VOICE="en_US-lessac-medium"
 PIPER_VOICES=(
-    "ar_JO-kareem-medium"
-    "fr_FR-siwis-medium"
     "en_US-lessac-medium"
+    "fr_FR-siwis-medium"
 )
 
 # Colors for output

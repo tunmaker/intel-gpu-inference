@@ -112,7 +112,7 @@ START=$(date +%s%N)
 HTTP_CODE=$(curl -s --max-time 60 -o "$OUT" -w "%{http_code}" \
     -X POST "$BASE_URL/" \
     -H "Content-Type: application/json" \
-    -d '{"text":"مرحبا، كيف حالك اليوم؟"}' 2>/dev/null || echo "000")
+    -d '{"text":"Hello, how are you today?"}' 2>/dev/null || echo "000")
 ELAPSED=$(awk -v s="$START" -v e="$(date +%s%N)" 'BEGIN{printf "%.3f", (e-s)/1e9}')
 
 INFO=$(wav_info "$OUT" || echo "")
@@ -128,19 +128,18 @@ else
 fi
 
 # ============================================================================
-# Test 4: All three voices selectable without restart
+# Test 4: Both voices selectable without restart
 # ============================================================================
 
 run_test "Voice Selection (no restart)"
 
 declare -A VOICE_TEXT=(
-    [ar_JO-kareem-medium]="مرحبا، كيف حالك اليوم؟"
     [fr_FR-siwis-medium]="Bonjour, comment allez-vous?"
     [en_US-lessac-medium]="Hello, how are you today?"
 )
 
 VOICE_FAILS=0
-for voice in ar_JO-kareem-medium fr_FR-siwis-medium en_US-lessac-medium; do
+for voice in en_US-lessac-medium fr_FR-siwis-medium; do
     OUT="$WORK_DIR/$voice.wav"
     BODY=$(python3 -c "
 import json, sys
