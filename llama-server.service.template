@@ -8,6 +8,10 @@
 [Unit]
 Description=llama.cpp SYCL inference server (Intel Arc A770)
 After=network.target
+# Must live in [Unit]: systemd ignores these under [Service] ("Unknown key name"),
+# so Restart=always retried without limit and OOM turned into a crash loop.
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -16,8 +20,6 @@ WorkingDirectory=__INSTALL_DIR__
 ExecStart=__INSTALL_DIR__/scripts/run.sh
 Restart=always
 RestartSec=5
-StartLimitIntervalSec=60
-StartLimitBurst=3
 
 [Install]
 WantedBy=default.target
