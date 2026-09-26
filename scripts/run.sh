@@ -144,6 +144,9 @@ GPU_LAYERS="999"
 export ZES_ENABLE_SYSMAN="${ZES_ENABLE_SYSMAN:-1}"
 # Allow VRAM allocations larger than 4GB (required for most models)
 export UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS="${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS:-1}"
+export ONEAPI_DEVICE_SELECTOR="${ONEAPI_DEVICE_SELECTOR:-level_zero:0,1}"
+# 16,8 exhausts the A380 (reported as OUT_OF_HOST_MEMORY); re-tune on any model, quant or ctx change.
+TENSOR_SPLIT="${TENSOR_SPLIT:-17,7}"
 
 # ============================================================================
 # Launch server
@@ -159,7 +162,8 @@ echo "  Context:  $CONTEXT_SIZE tokens"
 echo "  GPU:      All layers offloaded"
 echo "  Endpoint: http://${HOST}:${PORT}/v1"
 echo ""
-echo "  SYCL:     split-mode=none, main-gpu=0"
+echo "  SYCL:     split-mode=layer, tensor-split=${TENSOR_SPLIT}"
+echo "            ONEAPI_DEVICE_SELECTOR=${ONEAPI_DEVICE_SELECTOR}"
 echo "  Env:      ZES_ENABLE_SYSMAN=${ZES_ENABLE_SYSMAN}"
 echo "            UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS=${UR_L0_ENABLE_RELAXED_ALLOCATION_LIMITS}"
 echo ""
@@ -294,12 +298,54 @@ fi
 # SSM architecture was measuring a flag that was never active. Both may well be
 # true, but the mmproj disable happens first and unconditionally. The flag is kept
 # for the day this runs without a projector; until then, do not budget on it.
-# --- Active config: Qwen3.5-9B Q8_0 — agentic assistant, tool calling, vision ---
+# --- Previous config (fallback): Qwen3.5-9B Q8_0 — hybrid SSM, vision, 131K ctx ---
 # SYCL flash attention + fused Gated Delta Net (requires llama.cpp build >= 8369).
 # Hybrid SSM+attention: only 8/32 layers hold KV cache, so 131K context fits in 16GB
 # alongside the F16 vision projector.
 # Unsloth agentic profile: temp=0.6, no repeat penalty (repeat penalty mangles tool JSON).
 # Thinking disabled — no <think> block on every turn, which is latency the voice path pays for.
+# exec "$SERVER_BIN" \
+#     --model "$MODEL_PATH" \
+#     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
+#     "${SPEC_ARGS[@]+"${SPEC_ARGS[@]}"}" \
+#     --host "$HOST" \
+#     --port "$PORT" \
+#     --ctx-size "$CONTEXT_SIZE" \
+#     --n-gpu-layers $GPU_LAYERS \
+#     --split-mode none \
+#     --main-gpu 0 \
+#     --fit off \
+#     --load-mode mmap \
+#     --flash-attn on \
+#     --parallel 2 \
+#     --no-kv-unified \
+#     --cache-reuse 256 \
+#     --temp 0.6 \
+#     --top-p 0.95 \
+#     --top-k 20 \
+#     --min-p 0.0 \
+#     --reasoning off \
+#     "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"
+
+# --- Active config: Qwen3.8-27B IQ4_XS — agentic assistant, tool calling, vision ---
+# Dense attention, NOT the hybrid SSM of Qwen3.5-9B: all 64 layers hold KV, so the
+# cache costs 256 KiB/token at f16 against roughly 8 KiB/token before. 131072 is
+# therefore out of reach at any quant -- full 262144 context would want 68 GB of KV
+# alone -- and q4_0 is what buys usable context here: 2.4 GB at 32768 instead of 8.6 GB.
+# Measured on this host (22 Sep 2026), A770 16GB, llama-bench:
+#   UD-IQ4_XS  (13.26 GiB) .... pp256 189.0 t/s, tg64 9.25 t/s
+#   UD-Q3_K_XL (12.23 GiB) .... pp256 188.5 t/s, tg64 8.71 t/s
+# IQ4_XS is the larger file and still the faster one, so the note in docs/models.md
+# about legacy quants beating K-quants extends to I-quants: Q3_K_XL's mixed-precision
+# dequant costs more per byte than IQ4_XS's uniform one. It is also 4.25 bpw against
+# ~3.5, so there is no axis on which Q3_K_XL wins; it stays only as a fallback.
+# One slot: --parallel 1 leaves nothing to pin with id_slot, and the voice/shared
+# lane split documented above cannot apply. Raise --parallel only by taking context
+# away, since --no-kv-unified divides --ctx-size equally between slots.
+# Vision needs the A380 (layer split below): weights plus the F16 projector overflow the A770 alone.
+# Qwen3.8 instruct (non-thinking) profile: temp=0.7, top-p=0.80. Unsloth also
+# documents presence-penalty 1.5 for this mode, left off here because penalties
+# mangle tool JSON -- the same reason repeat-penalty is absent.
 exec "$SERVER_BIN" \
     --model "$MODEL_PATH" \
     "${MMPROJ_ARGS[@]+"${MMPROJ_ARGS[@]}"}" \
@@ -308,16 +354,20 @@ exec "$SERVER_BIN" \
     --port "$PORT" \
     --ctx-size "$CONTEXT_SIZE" \
     --n-gpu-layers $GPU_LAYERS \
-    --split-mode none \
-    --main-gpu 0 \
+    --split-mode layer \
+    --tensor-split "$TENSOR_SPLIT" \
+    --batch-size 1024 \
+    --ubatch-size 256 \
     --fit off \
     --load-mode mmap \
     --flash-attn on \
-    --parallel 2 \
+    --cache-type-k q4_0 \
+    --cache-type-v q4_0 \
+    --parallel 1 \
     --no-kv-unified \
     --cache-reuse 256 \
-    --temp 0.6 \
-    --top-p 0.95 \
+    --temp 0.7 \
+    --top-p 0.80 \
     --top-k 20 \
     --min-p 0.0 \
     --reasoning off \
