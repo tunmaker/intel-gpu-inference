@@ -111,6 +111,31 @@ These push VRAM limits. Expect limited context and slower performance.
 
 ---
 
+## Tier 4: Beyond 16GB (A770 + A380, layer split)
+
+Adding an 8GB Arc A380 as a second SYCL device lets a 27B model run with vision.
+
+### Qwen3.8-27B (CURRENT DEFAULT)
+- **Why**: Dense 27B with native tool calling and vision; a clear quality step over the 9B-class models
+- **GGUF source**: `unsloth/Qwen3.8-27B-GGUF` — `Qwen3.8-27B-UD-IQ4_XS.gguf` (14.25 GB) + `mmproj-F16.gguf` (0.93 GB)
+- **Recommended quant**: UD-IQ4_XS. It beats UD-Q3_K_XL on speed despite being larger (tg64 9.25 vs 8.71 t/s, pp256 189.0 vs 188.5 t/s, A770 alone), so the note above about legacy quants extends to I-quants
+- **Context**: 49152 tokens, single slot, `q4_0` KV cache. Dense attention means every layer holds KV (~256 KiB/token at f16), so 131072 is out of reach at any quant
+- **Split**: `--split-mode layer --tensor-split 17,7` with `ONEAPI_DEVICE_SELECTOR=level_zero:0,1`. A proportional `16,8` exhausts the A380; re-tune after any model, quant or context change
+- **Tool calling**: Yes, via `--jinja`; use the non-thinking profile (`temp 0.7`, `top-p 0.80`, no repeat/presence penalty — penalties mangle tool JSON)
+- **Best for**: Agentic assistant with tool calling and image input
+
+Weights plus the F16 projector already exceed 16 GB, so vision needs the second card. That costs ~30% generation speed against the A770 alone:
+
+| Configuration | Generation |
+|---|---|
+| A770 + A380, 48K, vision (**current**) | 6.23 t/s |
+| A770 + A380, 32K, vision | 6.62 t/s |
+| A770 alone, 32K, no vision | 9.10 t/s |
+
+**Out-of-VRAM shows up as `UR_RESULT_ERROR_OUT_OF_HOST_MEMORY`.** With `GGML_SYCL_HOST_MEM_FALLBACK=ON`, a failed device allocation falls back to host memory and it is that failure which is reported. Check the split and context before chasing host RAM.
+
+---
+
 ## Model Selection by Use Case
 
 | Use Case | Primary Pick | Alternative |
@@ -152,5 +177,6 @@ huggingface-cli download bartowski/Meta-Llama-3.1-8B-Instruct-GGUF \
 | Llama-3.1-8B | Q8_0 | ~8 GB | 25-30 t/s | 8K |
 | Qwen2.5-14B | Q4_0 | ~8 GB | 20-25 t/s | 4-8K |
 | Codestral-22B | Q4_0 | ~12.5 GB | 10-15 t/s | 2-4K |
+| Qwen3.8-27B (A770 + A380) | UD-IQ4_XS | ~15.2 GB + KV | 6.2 t/s (measured) | 48K |
 
 *Speeds are estimates for Intel Arc A770 with SYCL backend. Actual performance varies by prompt length, batch size, and system configuration.*
