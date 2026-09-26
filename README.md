@@ -6,7 +6,7 @@ Local LLM inference on **Intel Arc A770 16GB** using **llama.cpp with SYCL backe
 - Native tool/function calling for agentic workflows
 - Dedicated embedding server (optional, separate llama.cpp instance)
 - MCP web search server (optional, no API keys)
-- Speech-to-text via Vosk (Tunisian Derja); whisper.cpp retired, opt-in only
+- Speech-to-text via whisper.cpp (large-v3-turbo on the GPU); Vosk (Derja) retired
 - SYCL flash attention + fused Gated Delta Net for Qwen3.5
 - Runs as systemd user services with auto-restart
 - Persistent services survive logout (with lingering enabled)
@@ -138,7 +138,7 @@ journalctl --user -u embedding-server -f
 **Test**: `./scripts/test-embedding.sh`
 **Model**: set `EMBEDDING_MODEL` in `~/.config/intel-gpu-inference/env`
 
-### whisper-server — Speech Recognition (RETIRED — disabled and masked)
+### whisper-server — Speech Recognition
 
 Multilingual speech-to-text via [whisper.cpp](https://github.com/ggml-org/whisper.cpp) with SYCL GPU acceleration. Supports Arabic, English, French, Chinese, and 90+ languages.
 

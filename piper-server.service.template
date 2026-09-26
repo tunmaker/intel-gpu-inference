@@ -32,10 +32,9 @@ CPUQuota=200%
 
 # Sacrifice order under memory pressure:
 #   llama-server 0 (the active model, must not be disturbed)
-#   embedding-server 500 < piper-server 700 < vosk-server 800
+#   embedding-server 500 < piper-server 700 < whisper-server 900
 # Piper sits above embedding because it reloads in ~2s and holds no shared
-# state, and below vosk, which is now the first victim (whisper-server, the
-# previous 900, is retired and masked).
+# state, and below whisper, the first victim.
 OOMScoreAdjust=700
 
 StartLimitIntervalSec=60

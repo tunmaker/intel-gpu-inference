@@ -65,23 +65,13 @@ curl http://<host>:8085/v1/embeddings \
   -d '{"input": ["text one", "text two"], "model": "embedding"}'
 ```
 
-### whisper-server — Speech Recognition (port 9090) — RETIRED
+### whisper-server — Speech Recognition (port 9090)
 
-**This service is disabled and masked. Nothing listens on 9090.** Speech-to-text is
-served entirely by `vosk-server` on 9092, which is wire-compatible (see below).
-
-Retired because the only consumers speak Tunisian Derja, where Vosk is both more
-accurate and 2.1x faster on CPU than whisper is on the GPU — so whisper was holding
-VRAM and standing as the designated OOM victim for no benefit.
-
-**Trade-off, stated plainly:** whisper handled 90+ languages; Vosk's `ar-tn` model
-does not. Non-Derja audio is out of scope until another model is installed.
-
-To bring it back: `systemctl --user unmask whisper-server`, restore the unit from
-`~/.config/systemd/user/whisper-server.service.retired`, then `daemon-reload` and
-`enable --now`. The install path (`./install.sh --with-whisper`) still works.
-
-The historical API, for reference:
+whisper.cpp with `ggml-large-v3-turbo-q5_0` on the A770 (`WHISPER_DEVICE`, default
+`level_zero:0`), beside the chat model. Multilingual; the assistant uses it for
+English and French. A short command transcribes in ~1.1s warm. The first request
+after a start compiles SYCL kernels for ~50s, so the unit runs
+`scripts/warmup-whisper.sh` as `ExecStartPost` and only turns active once warm.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -161,7 +151,11 @@ other two; the model ships inside the wheel and needs no extra setup.
 The first request for a voice also pays a one-off ~1s load, since voices other than
 `PIPER_VOICE` are loaded lazily on first use.
 
-### vosk-server — Tunisian Derja Speech Recognition (port 9092)
+### vosk-server — Tunisian Derja Speech Recognition (port 9092) — RETIRED
+
+**Disabled.** The assistant moved to English and French, where whisper is the right
+engine. The unit, scripts and model remain; `systemctl --user enable --now vosk-server`
+brings it back. Kept for reference:
 
 Kaldi/Vosk speech-to-text specialised for **Tunisian Derja** (`vosk-model-ar-tn-0.1-linto`,
 Apache 2.0, trained on TARIC). CPU-only: Vosk is an nnet3 acoustic model plus a WFST beam
@@ -261,9 +255,9 @@ curl http://<host>:3000/mcp \
 |---------|------|----------|--------|
 | llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
 | embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
-| ~~whisper-server~~ | ~~9090~~ | — | **Retired** — disabled and masked; use vosk-server |
+| whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
 | piper-server | 9091 | HTTP (JSON → WAV) | `systemctl --user status piper-server` |
-| vosk-server | 9092 | HTTP (multipart) | `systemctl --user status vosk-server` |
+| ~~vosk-server~~ | ~~9092~~ | — | **Retired** — disabled; whisper-server is the STT |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
 
 All services bind to `0.0.0.0` by default and are accessible on the local network.
