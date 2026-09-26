@@ -135,11 +135,11 @@ run_test "Voice Selection (no restart)"
 
 declare -A VOICE_TEXT=(
     [fr_FR-siwis-medium]="Bonjour, comment allez-vous?"
-    [en_US-lessac-medium]="Hello, how are you today?"
+    [en_US-ryan-medium]="Hello, how are you today?"
 )
 
 VOICE_FAILS=0
-for voice in en_US-lessac-medium fr_FR-siwis-medium; do
+for voice in en_US-ryan-medium fr_FR-siwis-medium; do
     OUT="$WORK_DIR/$voice.wav"
     BODY=$(python3 -c "
 import json, sys
@@ -181,9 +181,9 @@ run_test "length_scale Parameter"
 SLOW="$WORK_DIR/slow.wav"
 FAST="$WORK_DIR/fast.wav"
 curl -s --max-time 60 -o "$SLOW" -X POST "$BASE_URL/" -H "Content-Type: application/json" \
-    -d '{"text":"Hello, how are you today?","voice":"en_US-lessac-medium","length_scale":1.0}' 2>/dev/null || true
+    -d '{"text":"Hello, how are you today?","voice":"en_US-ryan-medium","length_scale":1.0}' 2>/dev/null || true
 curl -s --max-time 60 -o "$FAST" -X POST "$BASE_URL/" -H "Content-Type: application/json" \
-    -d '{"text":"Hello, how are you today?","voice":"en_US-lessac-medium","length_scale":0.6}' 2>/dev/null || true
+    -d '{"text":"Hello, how are you today?","voice":"en_US-ryan-medium","length_scale":0.6}' 2>/dev/null || true
 
 SLOW_DUR=$(wav_info "$SLOW" | cut -d' ' -f2 || echo "")
 FAST_DUR=$(wav_info "$FAST" | cut -d' ' -f2 || echo "")

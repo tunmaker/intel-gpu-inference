@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./scripts/run-piper.sh                                # Run with default voice
-#   ./scripts/run-piper.sh en_US-lessac-medium            # Run with a specific voice
+#   ./scripts/run-piper.sh en_US-ryan-medium            # Run with a specific voice
 #   PIPER_PORT=9092 ./scripts/run-piper.sh                # Different port
 #
 # Endpoints:
@@ -34,7 +34,7 @@ fi
 # Parse arguments
 # ============================================================================
 
-VOICE="${PIPER_VOICE:-en_US-lessac-medium}"
+VOICE="${PIPER_VOICE:-en_US-ryan-medium}"
 EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
             echo "  Any other args      Passed directly to piper.http_server"
             echo ""
             echo "Environment variables:"
-            echo "  PIPER_VOICE         Default voice (default: en_US-lessac-medium)"
+            echo "  PIPER_VOICE         Default voice (default: en_US-ryan-medium)"
             echo "  PIPER_VOICES_DIR    Voice directory (default: \$MODELS_DIR/piper)"
             echo "  PIPER_HOST          Bind address (default: 0.0.0.0)"
             echo "  PIPER_PORT          Listen port (default: 9091)"

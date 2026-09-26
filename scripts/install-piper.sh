@@ -29,9 +29,9 @@ ENV_FILE="$HOME/.config/intel-gpu-inference/env"
 MODELS_DIR="${MODELS_DIR:-$HOME/models}"
 VOICES_DIR="${PIPER_VOICES_DIR:-$MODELS_DIR/piper}"
 
-DEFAULT_PIPER_VOICE="en_US-lessac-medium"
+DEFAULT_PIPER_VOICE="en_US-ryan-medium"
 PIPER_VOICES=(
-    "en_US-lessac-medium"
+    "en_US-ryan-medium"
     "fr_FR-siwis-medium"
 )
 

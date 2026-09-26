@@ -96,9 +96,8 @@ curl http://<host>:9090/inference \
 ### piper-server — Text-to-Speech (port 9091)
 
 Neural TTS from [OHF-Voice/piper1-gpl](https://github.com/OHF-Voice/piper1-gpl), CPU-only
-(onnxruntime). Takes JSON, returns WAV bytes. Three voices are installed and all are
-selectable per request without restarting the server, so a caller can pick a voice from
-the script of the reply text.
+(onnxruntime). Takes JSON, returns WAV bytes. Every installed voice is selectable per
+request without restarting the server.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -109,10 +108,10 @@ the script of the reply text.
 | `/` | GET | Browser test page |
 
 ```bash
-# Synthesize Arabic (default voice) and save the WAV
+# Synthesize with the default voice and save the WAV
 curl http://<host>:9091/ \
   -H "Content-Type: application/json" \
-  -d '{"text":"مرحبا، كيف حالك اليوم؟"}' \
+  -d '{"text":"Hello, how are you today?"}' \
   -o speech.wav
 
 # Pick a voice explicitly, and speak 25% faster
@@ -127,26 +126,23 @@ curl http://<host>:9091/voices
 
 **Request fields** (JSON):
 - `text` — text to speak (required)
-- `voice` — voice name, e.g. `ar_JO-kareem-medium` (optional, defaults to `PIPER_VOICE`)
+- `voice` — voice name, e.g. `en_US-ryan-medium` (optional, defaults to `PIPER_VOICE`)
 - `length_scale` — speaking rate; below 1.0 is faster (optional)
 - `noise_scale`, `noise_w_scale` — generator noise (optional)
-- `speaker` / `speaker_id` — for multi-speaker voices (optional; none of the three are)
+- `speaker` / `speaker_id` — for multi-speaker voices (optional; none of the installed ones are)
 
-**Response**: WAV bytes, 16-bit mono at the voice's native sample rate (22050 Hz for all
-three installed voices). An unknown `voice` falls back to the default rather than erroring.
+**Response**: WAV bytes, 16-bit mono at the voice's native sample rate (22050 Hz for every
+installed voice). An unknown `voice` falls back to the default rather than erroring.
 
 **Installed voices**:
 
 | Voice | Language | Measured RTF |
 |-------|----------|--------------|
-| `ar_JO-kareem-medium` | Arabic (Jordan) | 0.058 |
+| `en_US-ryan-medium` | English (US), male — the default | 0.044 |
 | `fr_FR-siwis-medium` | French | 0.039 |
-| `en_US-lessac-medium` | English (US) | 0.040 |
 
-RTF is synthesis wall time over audio duration, so 0.058 is ~17x faster than real time.
-Measured warm (median of 6) on the deployment host under the service's 200% CPU quota.
-Arabic runs an extra tashkeel diacritization pass, which is why it costs more than the
-other two; the model ships inside the wheel and needs no extra setup.
+RTF is synthesis wall time over audio duration, so 0.044 is ~23x faster than real time,
+measured warm on the deployment host under the service's 200% CPU quota.
 
 The first request for a voice also pays a one-off ~1s load, since voices other than
 `PIPER_VOICE` are loaded lazily on first use.
