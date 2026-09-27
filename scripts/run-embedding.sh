@@ -62,7 +62,7 @@ while [[ $# -gt 0 ]]; do
             echo "Environment variables:"
             echo "  EMBEDDING_MODEL     Model path (default: from env config)"
             echo "  EMBEDDING_HOST      Bind address (default: 0.0.0.0)"
-            echo "  EMBEDDING_PORT      Listen port (default: 8085)"
+            echo "  EMBEDDING_PORT      Listen port (default: 8002)"
             echo "  EMBEDDING_CTX       Per-slot context (default: 4096); total ctx = CTX * PARALLEL"
             echo ""
             echo "Endpoint:"
@@ -119,7 +119,7 @@ fi
 # ============================================================================
 
 HOST="${EMBEDDING_HOST:-0.0.0.0}"
-PORT="${EMBEDDING_PORT:-8085}"
+PORT="${EMBEDDING_PORT:-8002}"
 CONTEXT_SIZE="${EMBEDDING_CTX:-4096}"
 
 # GPU layers: offload everything to GPU

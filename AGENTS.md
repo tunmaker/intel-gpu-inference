@@ -42,7 +42,7 @@ curl http://<host>:8080/v1/chat/completions \
   -d '{"model":"default","messages":[{"role":"user","content":"Search for AI news"}],"tools":[{"type":"function","function":{"name":"search","description":"Web search","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}}]}'
 ```
 
-### embedding-server — Dedicated Embeddings (port 8085)
+### embedding-server — Dedicated Embeddings (port 8002)
 
 OpenAI-compatible embeddings API running a separate llama.cpp instance in embedding-only mode.
 
@@ -60,14 +60,14 @@ set `EMBEDDING_AUTOENABLE=0` in the host env to install it without enabling it.
 
 ```bash
 # Generate embeddings
-curl http://<host>:8085/v1/embeddings \
+curl http://<host>:8002/v1/embeddings \
   -H "Content-Type: application/json" \
   -d '{"input": "Your text here", "model": "embedding"}'
 
 # Response: {"data":[{"embedding":[0.123, ...], "index":0}], ...}
 
 # Batch embeddings
-curl http://<host>:8085/v1/embeddings \
+curl http://<host>:8002/v1/embeddings \
   -H "Content-Type: application/json" \
   -d '{"input": ["text one", "text two"], "model": "embedding"}'
 ```
@@ -205,7 +205,7 @@ curl http://<host>:3000/mcp \
 | Service | Port | Protocol | Status |
 |---------|------|----------|--------|
 | llama-server | 8080 | HTTP (OpenAI-compatible) | `systemctl --user status llama-server` |
-| embedding-server | 8085 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
+| embedding-server | 8002 | HTTP (OpenAI-compatible) | `systemctl --user status embedding-server` |
 | whisper-server | 9090 | HTTP (multipart) | `systemctl --user status whisper-server` |
 | piper-server | 9091 | HTTP (JSON → WAV) | `systemctl --user status piper-server` |
 | open-websearch | 3000 | HTTP (MCP/SSE) | `systemctl --user status open-websearch` |
@@ -465,7 +465,7 @@ def main():
 | `LLAMA_PORT` | LLM server port | `8080` |
 | `EMBEDDING_MODEL` | Embedding model path | *(required)* |
 | `EMBEDDING_HOST` | Embedding server bind address | `0.0.0.0` |
-| `EMBEDDING_PORT` | Embedding server port | `8085` |
+| `EMBEDDING_PORT` | Embedding server port | `8002` |
 | `EMBEDDING_CTX` | Embedding per-slot context | `4096` |
 | `EMBEDDING_POOLING` | Pooling mode (`cls` for BGE, `last` for Qwen3-Embedding) | `cls` |
 | `EMBEDDING_AUTOENABLE` | `0` installs the unit without enabling or starting it | `1` |

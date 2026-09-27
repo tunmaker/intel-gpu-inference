@@ -9,11 +9,11 @@
 #
 # Usage:
 #   ./scripts/test-embedding.sh                        # Test default endpoint
-#   ./scripts/test-embedding.sh http://host:8085       # Test specific endpoint
+#   ./scripts/test-embedding.sh http://host:8002       # Test specific endpoint
 
 set -euo pipefail
 
-BASE_URL="${1:-http://127.0.0.1:8085}"
+BASE_URL="${1:-http://127.0.0.1:8002}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -118,7 +118,7 @@ journalctl --user -u open-websearch -f
 
 ### embedding-server — Dedicated Embedding Server (Optional)
 
-A separate llama.cpp instance running in embedding-only mode on port 8085. Keeps embedding workloads isolated from the main inference server.
+A separate llama.cpp instance running in embedding-only mode on port 8002. Keeps embedding workloads isolated from the main inference server.
 
 Run it only if nothing else on the host already serves that embedding model — a second copy of the same weights competes for VRAM with the first and with the chat model. Set `EMBEDDING_AUTOENABLE=0` to install the unit without enabling it.
 
@@ -136,7 +136,7 @@ systemctl --user restart embedding-server
 journalctl --user -u embedding-server -f
 ```
 
-**API**: `POST http://<host>:8085/v1/embeddings` (OpenAI-compatible)
+**API**: `POST http://<host>:8002/v1/embeddings` (OpenAI-compatible)
 **Test**: `./scripts/test-embedding.sh`
 **Model**: set `EMBEDDING_MODEL` in `~/.config/intel-gpu-inference/env`
 
@@ -179,7 +179,7 @@ All services read from `~/.config/intel-gpu-inference/env`. Edit and restart the
 | `PORT` | `3000` | MCP server port |
 | `EMBEDDING_MODEL` | *(required)* | Embedding model path (.gguf) |
 | `EMBEDDING_HOST` | `0.0.0.0` | Embedding server bind address |
-| `EMBEDDING_PORT` | `8085` | Embedding server port |
+| `EMBEDDING_PORT` | `8002` | Embedding server port |
 | `EMBEDDING_POOLING` | `cls` | Pooling mode — `cls` for BGE, `last` for Qwen3-Embedding, `mean` for E5/GTE |
 | `EMBEDDING_CTX` | `4096` | Per-slot context; total ctx = CTX × PARALLEL |
 | `EMBEDDING_PARALLEL` | `4` | Parallel decode slots |

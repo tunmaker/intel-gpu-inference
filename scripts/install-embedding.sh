@@ -11,7 +11,7 @@
 #   ./scripts/install-embedding.sh              # Install and start
 #   ./scripts/install-embedding.sh --no-service # Install only, no systemd service
 #
-# API endpoint: POST http://<host>:8085/v1/embeddings
+# API endpoint: POST http://<host>:8002/v1/embeddings
 
 set -euo pipefail
 
@@ -180,7 +180,7 @@ main() {
     echo "============================================================"
     echo ""
     echo "  Endpoints:"
-    echo "    POST http://0.0.0.0:8085/v1/embeddings   (embedding-server)"
+    echo "    POST http://0.0.0.0:8002/v1/embeddings   (embedding-server)"
     echo ""
     echo "  Model:    set EMBEDDING_MODEL in ~/.config/intel-gpu-inference/env"
     echo ""
@@ -190,7 +190,7 @@ main() {
     echo "  Config:     ~/.config/intel-gpu-inference/env"
     echo ""
     echo "  Test:"
-    echo "    curl http://localhost:8085/v1/embeddings \\"
+    echo "    curl http://localhost:8002/v1/embeddings \\"
     echo "      -H 'Content-Type: application/json' \\"
     echo "      -d '{\"input\": \"Hello world\", \"model\": \"embedding\"}'"
     echo ""
