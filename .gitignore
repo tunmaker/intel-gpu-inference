@@ -11,9 +11,6 @@ open-websearch/build/
 # Piper venv (recreated by scripts/install-piper.sh)
 piper-venv/
 
-# Vosk venv (recreated by scripts/install-vosk.sh)
-vosk-venv/
-
 # Whisper build artifacts
 whisper.cpp/build/
 *.o

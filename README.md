@@ -6,7 +6,7 @@ Local LLM inference on **Intel Arc A770 16GB** using **llama.cpp with SYCL backe
 - Native tool/function calling for agentic workflows
 - Dedicated embedding server (optional, separate llama.cpp instance)
 - MCP web search server (optional, no API keys)
-- Speech-to-text via whisper.cpp (large-v3-turbo on the GPU); Vosk (Derja) retired
+- Speech-to-text via whisper.cpp (large-v3-turbo on the GPU)
 - SYCL flash attention + fused Gated Delta Net for Qwen3.5
 - Runs as systemd user services with auto-restart
 - Persistent services survive logout (with lingering enabled)
