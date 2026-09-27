@@ -144,6 +144,12 @@ install_service() {
     done
 
     systemctl --user daemon-reload
+
+    if [[ "${EMBEDDING_AUTOENABLE:-1}" != "1" ]]; then
+        log_ok "embedding-server installed, left disabled (EMBEDDING_AUTOENABLE=$EMBEDDING_AUTOENABLE)"
+        return
+    fi
+
     systemctl --user enable embedding-server.service
     systemctl --user restart embedding-server.service
 

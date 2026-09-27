@@ -120,6 +120,8 @@ journalctl --user -u open-websearch -f
 
 A separate llama.cpp instance running in embedding-only mode on port 8085. Keeps embedding workloads isolated from the main inference server.
 
+Run it only if nothing else on the host already serves that embedding model — a second copy of the same weights competes for VRAM with the first and with the chat model. Set `EMBEDDING_AUTOENABLE=0` to install the unit without enabling it.
+
 ```bash
 # Install (appends config to env, installs systemd service)
 ./scripts/install-embedding.sh

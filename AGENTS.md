@@ -46,6 +46,13 @@ curl http://<host>:8080/v1/chat/completions \
 
 OpenAI-compatible embeddings API running a separate llama.cpp instance in embedding-only mode.
 
+**Optional, and off where something else already serves the same model.** Two
+instances of one embedding model on the same GPU compete for VRAM with each other
+and with the chat model, so where another endpoint on the host already answers
+`/v1/embeddings` for that model, this unit stays disabled and consumers point at
+the other one. `install.sh --all` and `--with-embedding` enable and start this unit;
+set `EMBEDDING_AUTOENABLE=0` in the host env to install it without enabling it.
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/v1/embeddings` | POST | Generate text embeddings |
@@ -461,6 +468,7 @@ def main():
 | `EMBEDDING_PORT` | Embedding server port | `8085` |
 | `EMBEDDING_CTX` | Embedding per-slot context | `4096` |
 | `EMBEDDING_POOLING` | Pooling mode (`cls` for BGE, `last` for Qwen3-Embedding) | `cls` |
+| `EMBEDDING_AUTOENABLE` | `0` installs the unit without enabling or starting it | `1` |
 | `EMBEDDING_PARALLEL` | Parallel decode slots | `4` |
 | `WHISPER_MODEL` | Whisper model path | `~/models/ggml-large-v3.bin` |
 | `WHISPER_HOST` | Whisper server bind address | `0.0.0.0` |
